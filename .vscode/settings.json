@@ -1,0 +1,15 @@
+{
+  "python.analysis.extraPaths": [
+    "__pypackages__/3.9/lib",
+    "./.python_stubs/dist-packages/",
+    "/usr/lib/python3/dist-packages",
+    "./devel/lib/python3/dist-packages",
+  ],
+  "python.linting.mypyEnabled": true,
+  "python.linting.enabled": true,
+  "cSpell.words": [
+    "morai",
+    "rospkg",
+    "rospy"
+  ]
+}
