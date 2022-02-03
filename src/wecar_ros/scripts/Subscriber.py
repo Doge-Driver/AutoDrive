@@ -26,6 +26,7 @@ class Subscriber(Generic[T]):
 
         Returns retrived data
         """
+        self.isDataRetrieved = False
         self.__subscriber = rospy.Subscriber(self.__topic, self.__type, self.__set)
         return self
 
