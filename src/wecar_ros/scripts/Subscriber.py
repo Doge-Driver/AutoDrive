@@ -16,7 +16,7 @@ T = TypeVar("T")
 class Subscriber(Generic[T]):
     TIMEOUT = 1
 
-    def __init__(self, topic, type) -> None:
+    def __init__(self, topic, type):
         self.__topic = topic
         self.__type = type
         self.retrieve()
@@ -52,7 +52,7 @@ class Camera(Subscriber[CompressedImage], SingletonInstance):
         self.retrieve()
         return self.getImage()
 
-    def getImage(self):
+    def getImage(self):  # type: () -> np.ndarray
         np_arr = np.frombuffer(self.get().data, dtype=np.uint8)
         if np_arr.size == 0:
             return None
@@ -98,26 +98,3 @@ class TrafficLight(Subscriber[GetTrafficLightStatus], SingletonInstance):
 class VehicleStatus(Subscriber[EgoVehicleStatus], SingletonInstance):
     def __init__(self):
         super().__init__("/Ego_topic", EgoVehicleStatus)
-
-
-class Subscribers:
-    def __init__(self):
-        self.camera = Camera()
-        self.lidar = Lidar()
-        self.imu = IMU()
-        self.objectInfo = ObjectInfo()
-        self.trafficLight = TrafficLight()
-        self.vehicleInfo = VehicleStatus()
-
-
-# if __name__ == "__main__":
-#     rospy.init_node("test", anonymous=True)
-#     # camera = Camera()
-#     # print(camera.get())
-#     imu = IMU()
-#     while True:
-#         # start_time = time()
-#         # if imu.isDataRetrieved:
-#         # print(imu.data)
-#         print(imu.retrieve().get())
-#         # print(1 / (time() - start_time))

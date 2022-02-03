@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     # Set Inputs
     camera = Camera()
-    imu = IMU()
+    vs = IMU()
     objectInfo = ObjectInfo()
     trafficLight = TrafficLight()
     vehicleStatus = VehicleStatus()
