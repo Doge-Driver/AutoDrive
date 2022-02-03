@@ -5,8 +5,8 @@ import pickle
 
 import cv2
 
-filename = input("File name to read:")
-path = f"{os.path.dirname(os.path.abspath(__file__))}/{filename}"
+filename = input("File name to read: ")
+path = f"{os.path.dirname(os.path.abspath(__file__))}/pickles/{filename}"
 
 
 with open(f"{path}", "rb") as f:

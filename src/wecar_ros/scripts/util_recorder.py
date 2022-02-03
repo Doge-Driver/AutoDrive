@@ -12,9 +12,10 @@ if __name__ == "__main__":
     rospy.init_node("camera_recorder", anonymous=True)
     camera = Camera()
 
-    filename = input("파일 이름:")
-    path = f"{os.path.dirname(os.path.abspath(__file__))}/{filename}"
+    filename = input("파일 이름: ")
+    path = f"{os.path.dirname(os.path.abspath(__file__))}/pickles/{filename}"
     print(f"{path} 에 저장합니다")
+    print("녹화를 중단하려면 Ctrl + C 입력")
 
     frames = []
 
@@ -26,3 +27,4 @@ if __name__ == "__main__":
 
     with open(path, "wb") as f:
         pickle.dump(frames, f)
+        print(f"{path} 에 저장합니다")

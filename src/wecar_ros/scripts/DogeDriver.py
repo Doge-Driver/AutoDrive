@@ -15,10 +15,10 @@ class DogeDriver:
         self,
         vehicle: Vehicle,
         globalPath: GlobalPath,
-        objectInfo: ObjectInfo,
+        # objectInfo: ObjectInfo,
         lane,
-        trafficLight: TrafficLight,
-        camera: Camera,
+        # trafficLight: TrafficLight,
+        # camera: Camera,
     ):
         self.vehicle = vehicle
         self.path = globalPath
@@ -31,22 +31,22 @@ class DogeDriver:
 if __name__ == "__main__":
     rospy.init_node("doge_driver", anonymous=True)
 
-    """Set Vehicle"""
+    # Set Vehicle
     tesla = Vehicle()
 
-    """Set Inputs"""
+    # Set Inputs
     camera = Camera()
     imu = IMU()
     objectInfo = ObjectInfo()
     trafficLight = TrafficLight()
     vehicleStatus = VehicleStatus()
 
-    """Set GlobalPath"""
+    # Set GlobalPath
     globalPathFile = "test_path1"
     # globalPathFile = rospy.myargv(argv=sys.argv)[1]
     globalPath = GlobalPath(vehicleStatus, globalPathFile)
 
-    """Set LaneDetection"""
+    # Set LaneDetection
     # TODO: Initialize LANE DETECTION
 
     # musk = DogeDriver(tesla, globalPath, objectInfo, lane, trafficLight, camera)

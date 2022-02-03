@@ -1,6 +1,5 @@
 #! /usr/bin/python3
-
-from time import time, time_ns
+from time import time
 from typing import Generic, TypeVar
 
 import cv2
@@ -8,6 +7,8 @@ import numpy as np
 import rospy
 from morai_msgs.msg import EgoVehicleStatus, GetTrafficLightStatus, ObjectStatusList
 from sensor_msgs.msg import CompressedImage, Imu, LaserScan
+
+from lib.utils import SingletonInstance
 
 T = TypeVar("T")
 
@@ -25,7 +26,6 @@ class Subscriber(Generic[T]):
 
         Returns retrived data
         """
-        self.isDataRetrieved = False
         self.__subscriber = rospy.Subscriber(self.__topic, self.__type, self.__set)
         return self
 
@@ -43,8 +43,8 @@ class Subscriber(Generic[T]):
         return self.__data
 
 
-class Camera(Subscriber[CompressedImage]):
-    def __init__(self) -> None:
+class Camera(Subscriber[CompressedImage], SingletonInstance):
+    def __init__(self):
         super().__init__("/image_jpeg/compressed", CompressedImage)
 
     def retrieveImage(self):
@@ -53,29 +53,28 @@ class Camera(Subscriber[CompressedImage]):
 
     def getImage(self):
         np_arr = np.frombuffer(self.get().data, dtype=np.uint8)
-        # np_arr = np.array(self.get().data, dtype=np.uint8)
         if np_arr.size == 0:
             return None
         return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
 
-class Lidar(Subscriber[LaserScan]):
+class Lidar(Subscriber[LaserScan], SingletonInstance):
     def __init__(self):
         super().__init__("/lidar2D", LaserScan)
 
 
-class IMU(Subscriber[Imu]):
-    def __init__(self) -> None:
+class IMU(Subscriber[Imu], SingletonInstance):
+    def __init__(self):
         super().__init__("/imu", Imu)
 
 
-class ObjectInfo(Subscriber[ObjectStatusList]):
-    def __init__(self) -> None:
+class ObjectInfo(Subscriber[ObjectStatusList], SingletonInstance):
+    def __init__(self):
         super().__init__("/Object_topic", ObjectStatusList)
 
 
-class TrafficLight(Subscriber[GetTrafficLightStatus]):
-    def __init__(self) -> None:
+class TrafficLight(Subscriber[GetTrafficLightStatus], SingletonInstance):
+    def __init__(self):
         super().__init__("/GetTrafficLightStatus", GetTrafficLightStatus)
 
     def isRed(self):
@@ -95,7 +94,7 @@ class TrafficLight(Subscriber[GetTrafficLightStatus]):
         return self.get().trafficLightStatus == 33
 
 
-class VehicleStatus(Subscriber[EgoVehicleStatus]):
+class VehicleStatus(Subscriber[EgoVehicleStatus], SingletonInstance):
     def __init__(self):
         super().__init__("/Ego_topic", EgoVehicleStatus)
 
