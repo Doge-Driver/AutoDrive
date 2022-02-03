@@ -21,7 +21,8 @@ if __name__ == "__main__":
 
     while not rospy.is_shutdown():
         startTime = time_ns()
-        frame = camera.retrieveImage()
+        frame = camera.retrieve().get().data
+        # frame = camera.retrieveImage()
         endTime = time_ns()
         frames.append((frame, int((endTime - startTime) / 1000000)))
 
