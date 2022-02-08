@@ -1,12 +1,19 @@
 #! /usr/bin/python3
+from math import cos, pi, radians, sin
 from time import time
-from typing import Generic, TypeVar
+from typing import Generic, List, TypeVar
 
 import cv2
 import numpy as np
 import rospy
-from morai_msgs.msg import EgoVehicleStatus, GetTrafficLightStatus, ObjectStatusList
-from sensor_msgs.msg import CompressedImage, Imu, LaserScan
+from geometry_msgs.msg import Point32
+from morai_msgs.msg import (
+    EgoVehicleStatus,
+    GetTrafficLightStatus,
+    ObjectStatus,
+    ObjectStatusList,
+)
+from sensor_msgs.msg import CompressedImage, Imu, LaserScan, PointCloud
 
 from lib.utils import SingletonInstance
 
@@ -16,9 +23,10 @@ T = TypeVar("T")
 class Subscriber(Generic[T]):
     TIMEOUT = 1
 
-    def __init__(self, topic, type):
+    def __init__(self, topic, msgType):
         self.__topic = topic
-        self.__type = type
+        self.__type = msgType
+        self.__data = msgType()
         self.retrieve()
 
     def retrieve(self):  # type: () -> Subscriber[T]
@@ -38,8 +46,9 @@ class Subscriber(Generic[T]):
     def get(self):  # type: () -> T
         startTime = time()
         while not self.isDataRetrieved:
-            if time() - startTime >= self.TIMEOUT:
-                return self.__type()
+            if time() - startTime > self.TIMEOUT:
+                break
+            continue
 
         return self.__data
 
@@ -54,14 +63,39 @@ class Camera(Subscriber[CompressedImage], SingletonInstance):
 
     def getImage(self):  # type: () -> np.ndarray
         np_arr = np.frombuffer(self.get().data, dtype=np.uint8)
-        if np_arr.size == 0:
-            return None
         return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
 
 class Lidar(Subscriber[LaserScan], SingletonInstance):
+    ANGLE_YAW = pi
+
     def __init__(self):
         super().__init__("/lidar2D", LaserScan)
+        self.pcd_pub = rospy.Publisher("laser2pcd", PointCloud, queue_size=1)
+
+    def calcPoints(self):  # type: () -> PointCloud
+        pcd = PointCloud()
+        pcd.header.frame_id = self.get().header.frame_id
+
+        angleIncrement = self.get().angle_increment
+        angle = 0.0
+
+        ranges = self.get().ranges
+
+        for range in ranges:
+            if range < 10.0:
+                pcd.points.append(
+                    Point32(
+                        x=range * cos(angle),  # + vehicleStatus.position.x,
+                        y=range * sin(angle),  # + vehicleStatus.position.y,
+                    )
+                )
+            angle += angleIncrement
+        return pcd
+
+    def publish(self):
+        pcd = self.calcPoints()
+        self.pcd_pub.publish(pcd)
 
 
 class IMU(Subscriber[Imu], SingletonInstance):
@@ -72,6 +106,18 @@ class IMU(Subscriber[Imu], SingletonInstance):
 class ObjectInfo(Subscriber[ObjectStatusList], SingletonInstance):
     def __init__(self):
         super().__init__("/Object_topic", ObjectStatusList)
+
+    def getNpcs(self):  # type: () -> List[ObjectStatus]
+        return self.get().npc_list
+
+    def getPedestrians(self):  # type: () -> List[ObjectStatus]
+        return self.get().pedestrian_list
+
+    def getObstacles(self):  # type: () -> List[ObjectStatus]
+        return self.get().obstacle_list
+
+    def getList(self):  # type: () -> List[ObjectStatus]
+        return self.getNpcs() + self.getPedestrians() + self.getObstacles()
 
 
 class TrafficLight(Subscriber[GetTrafficLightStatus], SingletonInstance):

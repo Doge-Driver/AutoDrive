@@ -3,10 +3,14 @@
 import rospy
 from std_msgs.msg import Float64
 
-from Subscriber import Subscribers
+from lib.utils import SingletonInstance
+from Subscriber import *
 
 
-class Vehicle:
+class Vehicle(SingletonInstance):
+    VEHICLE_LENGTH = 0.7
+    VEHICLE_WIDTH = 0.2
+
     RATE_HZ = 30
     MAX_SPEED = 10000
 
@@ -17,14 +21,6 @@ class Vehicle:
         self.steerPublisher = rospy.Publisher(
             "commands/servo/position", Float64, queue_size=1
         )
-
-        # self.sensor = Subscribers()
-
-        # self.camera = Camera()
-        # self.imu = IMU()
-        # self.objectInfo = ObjectInfo()
-        # self.trafficLight = TrafficLight()
-        # self.vehicleInfo = VehicleStatus()
 
     def brake(self):
         self.accel(0)

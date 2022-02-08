@@ -10,7 +10,6 @@ from Subscriber import Camera
 
 if __name__ == "__main__":
     rospy.init_node("camera_recorder", anonymous=True)
-    camera = Camera()
 
     filename = input("파일 이름: ")
     path = f"{os.path.dirname(os.path.abspath(__file__))}/pickles/{filename}"
@@ -21,8 +20,7 @@ if __name__ == "__main__":
 
     while not rospy.is_shutdown():
         startTime = time_ns()
-        frame = camera.retrieve().get().data
-        # frame = camera.retrieveImage()
+        frame = Camera().retrieve().get().data
         endTime = time_ns()
         frames.append((frame, int((endTime - startTime) / 1000000)))
 
