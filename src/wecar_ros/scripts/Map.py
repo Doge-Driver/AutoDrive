@@ -15,12 +15,13 @@ class Map(SingletonInstance):
     SIM_MIN_X, SIM_MIN_Y = -SIM_WIDTH / 2, -SIM_HEIGHT / 2
 
     def __init__(self):
-        mapImg = cv2.imread("map.png", cv2.IMREAD_GRAYSCALE)
+        mapImg = cv2.imread("colormap.png", cv2.IMREAD_UNCHANGED)
+        # mapImg = cv2.imread("map.png", cv2.IMREAD_GRAYSCALE)
         # 해상도에 맞게 알아서 사이즈 바꿔서 쓸것 (대신 10:3 비율 dsize)
         # map = cv2.resize(map, dsize=(1920, 576), interpolation=cv2.INTER_LINEAR)
 
         self.__mapImg = mapImg
-        self.IMG_HEIGHT, self.IMG_WIDTH = mapImg.shape
+        self.IMG_HEIGHT, self.IMG_WIDTH = mapImg.shape[:2]
         self.IMG_MAX_X, self.IMG_MAX_Y = self.IMG_WIDTH, self.IMG_HEIGHT
         self.IMG_MIN_X, self.IMG_MIN_Y = 0, 0
         self.IMG_CENTER_X, self.IMG_CENTER_Y = int(self.IMG_WIDTH / 2), int(
@@ -114,19 +115,19 @@ while not rospy.is_shutdown():
             absLidarPoint[0], absLidarPoint[1]
         )
         if absLidarPointOnMapX is not None and absLidarPointOnMapY is not None:
-            cv2.rectangle(
+            cv2.line(
                 mapImg,
-                (absLidarPointOnMapX - 2, absLidarPointOnMapY + 2),
-                (absLidarPointOnMapX - 2, absLidarPointOnMapY + 2),
+                (absLidarPointOnMapX, absLidarPointOnMapY),
+                (absLidarPointOnMapX, absLidarPointOnMapY),
                 255,
-                -1,
+                3,
             )
 
     # Draw
     cv2.rectangle(
         mapImg,
-        (x - 3, y - 3),
-        (x + 3, y + 3),
+        (x - 8, y - 8),
+        (x + 8, y + 8),
         255,
         -1,
     )

@@ -78,7 +78,9 @@ class Lidar(Subscriber[LaserScan], SingletonInstance):
         pcd.header.frame_id = self.get().header.frame_id
 
         angleIncrement = self.get().angle_increment
-        angle = 0.0
+        VehicleStatus().retrieve()
+        heading = radians(VehicleStatus().get().heading)
+        angle = self.ANGLE_YAW + heading
 
         ranges = self.get().ranges
 
