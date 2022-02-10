@@ -5,7 +5,7 @@ import math
 import cv2
 import numpy as np
 
-import LineType
+from LineType import LineType
 from Subscriber import *
 
 
@@ -103,6 +103,24 @@ while not rospy.is_shutdown():
 
     # Clone Map
     mapImg = map.getMap()
+
+    # Retrieve Lidar Points
+    Lidar().retrieve()
+    lidarPoints = Lidar().calcPoints().points  # type: List[Point32]
+    for lidarPoint in lidarPoints:
+        absLidarPoint = vehiclePoint.x + lidarPoint.x, vehiclePoint.y + lidarPoint.y
+        print(absLidarPoint)
+        absLidarPointOnMapX, absLidarPointOnMapY = map.convertPointSim2Img(
+            absLidarPoint[0], absLidarPoint[1]
+        )
+        if absLidarPointOnMapX is not None and absLidarPointOnMapY is not None:
+            cv2.rectangle(
+                mapImg,
+                (absLidarPointOnMapX - 2, absLidarPointOnMapY + 2),
+                (absLidarPointOnMapX - 2, absLidarPointOnMapY + 2),
+                255,
+                -1,
+            )
 
     # Draw
     cv2.rectangle(
