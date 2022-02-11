@@ -13,7 +13,7 @@ from Subscriber import VehicleStatus
 class GlobalPath:
     __currentPathIndex = 0
 
-    def __init__(self, pathFileName, interestPointCount):
+    def __init__(self, pathFileName):
         self.__globalPath = Path()
         self.__globalPath.header.frame_id = "/map"
         self.__load(pathFileName)
@@ -48,7 +48,7 @@ class GlobalPath:
         file.close()
 
     def updatePathIndex(self):
-        vehiclePosition = self.__vehicleInfo.retrieve().get()
+        vehiclePosition = VehicleStatus().retrieve().get().position
         currentDistance = self.__calcDistance(
             vehiclePosition,
             self.__globalPath.poses[self.__currentPathIndex].pose.position,
