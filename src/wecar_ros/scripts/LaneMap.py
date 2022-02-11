@@ -1,12 +1,19 @@
 #! /usr/bin/python3
 
-import math
 from enum import Enum
+from math import sqrt
 
 import cv2
 import numpy as np
+from rospkg import RosPack
 
 from Subscriber import *
+
+
+def getImgFilePath(imgFileName):
+    packageLocation = RosPack().get_path("wecar_ros")
+    fileName = f"{packageLocation}/mapimg/{imgFileName}"
+    return fileName
 
 
 class LaneType(Enum):
@@ -22,7 +29,8 @@ class LaneMap(SingletonInstance):
     SIM_MIN_X, SIM_MIN_Y = -SIM_WIDTH / 2, -SIM_HEIGHT / 2
 
     def __init__(self):
-        map = cv2.imread("labeledMap.png", cv2.IMREAD_GRAYSCALE)
+        file = getImgFilePath("labeledMap.png")
+        map = cv2.imread(file, cv2.IMREAD_GRAYSCALE)  # type: np.ndarray
         self.__map = map
 
         self.IMG_HEIGHT, self.IMG_WIDTH = map.shape[:2]
@@ -32,78 +40,124 @@ class LaneMap(SingletonInstance):
             self.IMG_HEIGHT / 2
         )
 
-        self.SCALE_FACTOR = {
-            "x": self.IMG_WIDTH / self.SIM_WIDTH,
-            "y": self.IMG_HEIGHT / self.SIM_HEIGHT,
-        }
+        self.SCALE_FACTOR = (
+            self.IMG_WIDTH / self.SIM_WIDTH
+        )  # IMG_WIDTH / SIM_WIDTH == IMG_HEIGHT / SIM_HEIGHT
 
-    def convertSizeXSim2Img(self, x):
-        return x * self.SCALE_FACTOR["x"]
+    def convertSizeSim2Img(self, simSize):
+        return int(simSize * self.SCALE_FACTOR)
 
-    def convertSizeYSim2Img(self, y):
-        return y * self.SCALE_FACTOR["y"]
+    def convertSizeImg2Sim(self, imgSize):
+        return imgSize / self.SCALE_FACTOR
 
-    def convertPointSim2Img(self, x, y):
+    def convertPointSim2Img(
+        self, x, y
+    ):  # type: (int, int) -> tuple[int, int] | tuple[None, None]
         if x > self.SIM_MAX_X or x < self.SIM_MIN_X:
             return None, None
         if y > self.SIM_MAX_Y or y < self.SIM_MIN_Y:
             return None, None
-        scaledX, scaledY = x * self.SCALE_FACTOR["x"], y * self.SCALE_FACTOR["y"]
+        scaledX, scaledY = x * self.SCALE_FACTOR, y * self.SCALE_FACTOR
         return int(self.IMG_CENTER_X + scaledX), int(self.IMG_CENTER_Y - scaledY)
 
-    def convertPointImg2Sim(self, x, y):
+    def convertPointImg2Sim(
+        self, x, y
+    ):  # type: (int, int) -> tuple[int, int] | tuple[None, None]
         if x > self.IMG_MAX_X or x < self.IMG_MIN_X:
             return None, None
         if x > self.IMG_MAX_Y or x < self.IMG_MIN_Y:
             return None, None
-        scaledX, scaledY = x / self.SCALE_FACTOR["x"], y / self.SCALE_FACTOR["y"]
+        scaledX, scaledY = x / self.SCALE_FACTOR, y / self.SCALE_FACTOR
         return self.SIM_MIN_X + scaledX, self.SIM_MAX_Y - scaledY
 
     def getMap(self):
         return self.__map
 
-    def findNearestPoint(self, x, y, ksize=1, lineType=LaneType.EDGE):
-        convertedX, convertedY = self.convertPointSim2Img(x, y)
-        kSizeX, kSizeY = self.convertSizeXSim2Img(ksize), self.convertSizeYSim2Img(
-            ksize
-        )
-        minDistance = 10000
-        nearestPoint = (0, 0)
+    def findNearestLanePoint(self, simX, simY, ksize=0.5):  # SimScaled
+        imgX, imgY = self.convertPointSim2Img(simX, simY)
+        kSizeX, kSizeY = self.convertSizeSim2Img(ksize), self.convertSizeSim2Img(ksize)
+
+        minDistance = {
+            LaneType.EDGE.value: 10000,
+            LaneType.DOT.value: 10000,
+            LaneType.CENTER.value: 10000,
+            LaneType.STOP.value: 10000,
+        }  # type: dict[int, tuple[int, int]]
+
+        nearestPoint = {
+            LaneType.EDGE.value: (-1, -1),
+            LaneType.DOT.value: (-1, -1),
+            LaneType.CENTER.value: (-1, -1),
+            LaneType.STOP.value: (-1, -1),
+        }  # type: dict[int, tuple[int, int]]
+
         for index, value in np.ndenumerate(
-            self.__mapImg[
-                convertedX - kSizeX : convertedX + kSizeX,
-                convertedY - kSizeY : convertedY + kSizeY,
+            self.__map[
+                imgX - kSizeX : imgX + kSizeX,
+                imgY - kSizeY : imgY + kSizeY,
             ]
         ):
-            ix, iy = index
-            if value == lineType:
-                distance = math.sqrt((convertedX - ix) ** 2 + (convertedY - iy) ** 2)
-                if minDistance > distance:
-                    minDistance = distance
-                    nearestPoint = index
+            # 안해도 안전할거라 믿어
+            # if not value in LaneType.name:
+            #     continue
+            iy, ix = index
+            distance = sqrt((imgX - ix) ** 2 + (imgY - iy) ** 2)
 
-        return nearestPoint
+            if minDistance[value] > distance:
+                minDistance[value] = self.convertSizeImg2Sim(distance)
+                nearestPoint[value] = self.convertPointImg2Sim(iy, ix)
 
-    def findNearestPoints(self, points, lineType=LaneType.EDGE):
-        linePoints = []
-        for point in points:
+        return nearestPoint, minDistance
+
+    def findNearestLanePoints(self, simPoints):  # SimScaled
+        lanePoints = (
+            []
+        )  # type: List[tuple[dict[int, tuple[int, int]], dict[int, tuple[int, int]]]]
+        for point in simPoints:
             x, y = point
-            linePoints.append(self.findNearestPoint(x, y, lineType))
+            lanePoints.append(self.findNearestLanePoint(x, y))
 
-        return linePoints
+        return lanePoints
 
-    def findLane(self, point, lineType=LaneType.EDGE):
-        pass
+    def findRoadPoint(self, simX, simY, distanceFromLane=0.15):  # SimScaled
+        imgX, imgY = self.convertPointSim2Img(simX, simY)
+        convertedDistanceFromLane = self.convertSizeSim2Img(distanceFromLane)
+        nearestPoint, _ = self.findNearestLanePoint(simX, simY)
 
-    # def getPointDrawnMap(self, point, color=(255, 255, 255), thickness=3):
-    #     mapImg = self.getMap()
-    #     cv2.line(mapImg, point, point, color, thickness)
-    #     return mapImg
+        roadPoint = {
+            LaneType.EDGE.value: (-1, -1),
+            LaneType.DOT.value: (-1, -1),
+            LaneType.CENTER.value: (-1, -1),
+            LaneType.STOP.value: (-1, -1),
+        }
+
+        for key, value in nearestPoint.items():
+            simX, simY = value
+            if simX == -1 or simY == -1:
+                continue
+            vectorSize = sqrt((imgX - simX) ** 2 + (imgY - simY) ** 2)
+
+            vectorX = (imgX - simX) * convertedDistanceFromLane / vectorSize
+            vectorY = (imgY - simY) * convertedDistanceFromLane / vectorSize
+            roadPoint[key] = self.convertSizeImg2Sim(
+                imgX + vectorX
+            ), self.convertSizeImg2Sim(imgY + vectorY)
+
+        return roadPoint
+
+    def findRoadPoints(self, simPoints):  # SimScaled
+        roadPoints = []  # type: List[dict[int, tuple[int, int]]]
+        for point in simPoints:
+            x, y = point
+            roadPoints.append(self.findRoadPoint(x, y))
+
+        return roadPoints
 
 
 rospy.init_node("draw_on_map", anonymous=True)
 map = LaneMap()
-colormap = cv2.imread("colorLabeledMap.png", cv2.IMREAD_ANYCOLOR)
+file = getImgFilePath("colorLabeledMap.png")
+colormap = cv2.imread(file, cv2.IMREAD_ANYCOLOR)
 
 while not rospy.is_shutdown():
     # Clone Map
