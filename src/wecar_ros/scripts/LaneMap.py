@@ -1,27 +1,31 @@
 #! /usr/bin/python3
 
 import math
+from enum import Enum
 
 import cv2
 import numpy as np
 
-from LineType import LineType
 from Subscriber import *
 
 
-class Map(SingletonInstance):
+class LaneType(Enum):
+    EDGE = 1
+    DOT = 2
+    CENTER = 3
+    STOP = 4
+
+
+class LaneMap(SingletonInstance):
     SIM_WIDTH, SIM_HEIGHT = 40, 12
     SIM_MAX_X, SIM_MAX_Y = SIM_WIDTH / 2, SIM_HEIGHT / 2
     SIM_MIN_X, SIM_MIN_Y = -SIM_WIDTH / 2, -SIM_HEIGHT / 2
 
     def __init__(self):
-        mapImg = cv2.imread("colormap.png", cv2.IMREAD_UNCHANGED)
-        # mapImg = cv2.imread("map.png", cv2.IMREAD_GRAYSCALE)
-        # 해상도에 맞게 알아서 사이즈 바꿔서 쓸것 (대신 10:3 비율 dsize)
-        # mapImg = cv2.resize(mapImg, dsize=(1920, 576), interpolation=cv2.INTER_LINEAR)
+        map = cv2.imread("labeledMap.png", cv2.IMREAD_GRAYSCALE)
+        self.__map = map
 
-        self.__mapImg = mapImg
-        self.IMG_HEIGHT, self.IMG_WIDTH = mapImg.shape[:2]
+        self.IMG_HEIGHT, self.IMG_WIDTH = map.shape[:2]
         self.IMG_MAX_X, self.IMG_MAX_Y = self.IMG_WIDTH, self.IMG_HEIGHT
         self.IMG_MIN_X, self.IMG_MIN_Y = 0, 0
         self.IMG_CENTER_X, self.IMG_CENTER_Y = int(self.IMG_WIDTH / 2), int(
@@ -56,11 +60,13 @@ class Map(SingletonInstance):
         return self.SIM_MIN_X + scaledX, self.SIM_MAX_Y - scaledY
 
     def getMap(self):
-        return self.__mapImg.copy()
+        return self.__map
 
-    def findNearestPoint(self, x, y, lineType=LineType.EDGE):
+    def findNearestPoint(self, x, y, ksize=1, lineType=LaneType.EDGE):
         convertedX, convertedY = self.convertPointSim2Img(x, y)
-        kSizeX, kSizeY = self.convertSizeXSim2Img(5), self.convertSizeYSim2Img(5)
+        kSizeX, kSizeY = self.convertSizeXSim2Img(ksize), self.convertSizeYSim2Img(
+            ksize
+        )
         minDistance = 10000
         nearestPoint = (0, 0)
         for index, value in np.ndenumerate(
@@ -78,13 +84,16 @@ class Map(SingletonInstance):
 
         return nearestPoint
 
-    def findNearestPoints(self, points, lineType=LineType.EDGE):
+    def findNearestPoints(self, points, lineType=LaneType.EDGE):
         linePoints = []
         for point in points:
             x, y = point
             linePoints.append(self.findNearestPoint(x, y, lineType))
 
         return linePoints
+
+    def findLane(self, point, lineType=LaneType.EDGE):
+        pass
 
     # def getPointDrawnMap(self, point, color=(255, 255, 255), thickness=3):
     #     mapImg = self.getMap()
@@ -93,8 +102,13 @@ class Map(SingletonInstance):
 
 
 rospy.init_node("draw_on_map", anonymous=True)
-map = Map()
+map = LaneMap()
+colormap = cv2.imread("colorLabeledMap.png", cv2.IMREAD_ANYCOLOR)
+
 while not rospy.is_shutdown():
+    # Clone Map
+    mapImg = colormap.copy()
+
     # Retrieve & Convert Vehicle Point to Img Point
     VehicleStatus().retrieve()
     vehiclePoint = VehicleStatus().get().position
@@ -102,28 +116,7 @@ while not rospy.is_shutdown():
     if x is None or y is None:
         continue
 
-    # Clone Map
-    mapImg = map.getMap()
-
-    # Retrieve Lidar Points
-    Lidar().retrieve()
-    lidarPoints = Lidar().calcPoints().points  # type: List[Point32]
-    for lidarPoint in lidarPoints:
-        absLidarPoint = vehiclePoint.x + lidarPoint.x, vehiclePoint.y + lidarPoint.y
-        print(absLidarPoint)
-        absLidarPointOnMapX, absLidarPointOnMapY = map.convertPointSim2Img(
-            absLidarPoint[0], absLidarPoint[1]
-        )
-        if absLidarPointOnMapX is not None and absLidarPointOnMapY is not None:
-            cv2.line(
-                mapImg,
-                (absLidarPointOnMapX, absLidarPointOnMapY),
-                (absLidarPointOnMapX, absLidarPointOnMapY),
-                255,
-                3,
-            )
-
-    # Draw
+    # Draw Vehicle
     cv2.rectangle(
         mapImg,
         (x - 8, y - 8),
@@ -131,6 +124,23 @@ while not rospy.is_shutdown():
         255,
         -1,
     )
+
+    # Retrieve Lidar Points
+    # Lidar().retrieve()
+    # lidarPoints = Lidar().calcPoints().points  # type: List[Point32]
+    # for lidarPoint in lidarPoints:
+    #     absLidarPoint = vehiclePoint.x + lidarPoint.x, vehiclePoint.y + lidarPoint.y
+    #     absLidarPointOnMapX, absLidarPointOnMapY = map.convertPointSim2Img(
+    #         absLidarPoint[0], absLidarPoint[1]
+    #     )
+    #     if absLidarPointOnMapX is not None and absLidarPointOnMapY is not None:
+    #         cv2.line(
+    #             mapImg,
+    #             (absLidarPointOnMapX, absLidarPointOnMapY),
+    #             (absLidarPointOnMapX, absLidarPointOnMapY),
+    #             255,
+    #             3,
+    #         )
 
     cv2.imshow("img", mapImg)
     cv2.waitKey(1)
