@@ -6,6 +6,7 @@ import numpy as np
 import rospy
 
 from GlobalPath import GlobalPath
+from LaneMap import LaneMap
 from Subscriber import *
 from Vehicle import Vehicle
 
@@ -15,44 +16,48 @@ class DogeDriver:
         self,
         vehicle: Vehicle,
         globalPath: GlobalPath,
-        # objectInfo: ObjectInfo,
-        lane,
-        # trafficLight: TrafficLight,
-        # camera: Camera,
+        laneMap,
     ):
         self.vehicle = vehicle
         self.path = globalPath
-        self.objectInfo = objectInfo
-        self.lane = lane
-        self.trafficLight = trafficLight
-        self.camera = camera
+        self.laneMap = laneMap
+
+    def followLane(self):
+        pass
+
+    def drive(self):
+        pass
 
 
 if __name__ == "__main__":
     rospy.init_node("doge_driver", anonymous=True)
 
-    # Set Vehicle
+    # Initialize Vehicle
     tesla = Vehicle()
 
-    # Set Inputs
-    camera = Camera()
-    vs = IMU()
-    objectInfo = ObjectInfo()
-    trafficLight = TrafficLight()
+    # Initialize Inputs
     vehicleStatus = VehicleStatus()
+    camera = Camera()
+    lidar = Lidar()
+    trafficLight = TrafficLight()
 
     # Set GlobalPath
     globalPathFile = "test_path1"
     # globalPathFile = rospy.myargv(argv=sys.argv)[1]
-    globalPath = GlobalPath(vehicleStatus, globalPathFile)
+    globalPath = GlobalPath(globalPathFile)
 
-    # Set LaneDetection
-    # TODO: Initialize LANE DETECTION
+    # Set LaneMap
+    laneMap = LaneMap()
 
-    # musk = DogeDriver(tesla, globalPath, objectInfo, lane, trafficLight, camera)
+    # Set ObstacleMap
 
-    while True:
-        image = camera.retrieveImage()
-        cv2.imshow("test", image)
-        cv2.waitKey(1)
+    elonmusk = DogeDriver(tesla, globalPath, laneMap)
+
+    while not rospy.is_shutdown():
+        vehicleStatus.retrieve()
+        lidar.retrieve()
+        trafficLight.retrieve()
+
+        elonmusk.drive()
+
         rospy.Rate(30).sleep()
