@@ -18,7 +18,7 @@ class Map(SingletonInstance):
         mapImg = cv2.imread("colormap.png", cv2.IMREAD_UNCHANGED)
         # mapImg = cv2.imread("map.png", cv2.IMREAD_GRAYSCALE)
         # 해상도에 맞게 알아서 사이즈 바꿔서 쓸것 (대신 10:3 비율 dsize)
-        # map = cv2.resize(map, dsize=(1920, 576), interpolation=cv2.INTER_LINEAR)
+        # mapImg = cv2.resize(mapImg, dsize=(1920, 576), interpolation=cv2.INTER_LINEAR)
 
         self.__mapImg = mapImg
         self.IMG_HEIGHT, self.IMG_WIDTH = mapImg.shape[:2]
@@ -53,7 +53,7 @@ class Map(SingletonInstance):
         if x > self.IMG_MAX_Y or x < self.IMG_MIN_Y:
             return None, None
         scaledX, scaledY = x / self.SCALE_FACTOR["x"], y / self.SCALE_FACTOR["y"]
-        return self.SIM_MIN_X + scaledX, self.SIM_MIN_Y + scaledY
+        return self.SIM_MIN_X + scaledX, self.SIM_MAX_Y - scaledY
 
     def getMap(self):
         return self.__mapImg.copy()
