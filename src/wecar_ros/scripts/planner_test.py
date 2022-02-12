@@ -1,11 +1,13 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 
-from math import atan2, cos, pi, sin, sqrt
+from math import atan2, cos, pi, radians, sin, sqrt
 
 import cv2
 import numpy as np
 from geometry_msgs.msg import Point, PoseStamped
+
+from Subscribers import VehicleStatus
 
 
 class Planner:
@@ -117,34 +119,34 @@ class Planner:
     def draw_fit_line(self, img, lines, color=[255, 255, 255], thickness=5):
         cv2.line(img, (lines[0], lines[1]), (lines[2], lines[3]), color, thickness)
 
-    def get_bo_local_points(self, local_path, dot_line, dis):
-        bo_list = []
+    def calcImgRoadPoints(self, local_path, dot_line, dis):
+        roadPoints = []
         for i in range(len(dot_line)):  # points = local_path positions
             x = local_path[i][0]
             y = local_path[i][1]
-            bo_list.append(self.get_bo_local_point(x, y, dot_line[i], dis))
-        return bo_list
+            roadPoints.append(self.calcImgRoadPoint(x, y, dot_line[i], dis))
+        return roadPoints
 
-    def get_bo_local_point(self, x, y, dot_line_point, dis=15):
-        lx, ly = dot_line_point
-        if x == lx:
-            bo_x = lx
-            if ly > y:
-                bo_y = ly - dis
+    def calcImgRoadPoint(self, pathX, pathY, dot_line_point, dis=15):
+        laneX, laneY = dot_line_point
+        if pathX == laneX:
+            roadX = laneX
+            if laneY > pathY:
+                roadY = laneY - dis
             else:
-                bo_y = ly + dis
+                roadY = laneY + dis
         else:
-            slope = (y - ly) / (x - lx)
-            if lx > x:
-                bo_x = lx - abs(dis * cos(slope))
+            slope = (pathY - laneY) / (pathX - laneX)
+            if laneX > pathX:
+                roadX = laneX - abs(dis * cos(slope))
             else:
-                bo_x = lx + abs(dis * cos(slope))
-            if ly > y:
-                bo_y = ly - abs(dis * sin(slope))
+                roadX = laneX + abs(dis * cos(slope))
+            if laneY > pathY:
+                roadY = laneY - abs(dis * sin(slope))
             else:
-                bo_y = ly + abs(dis * sin(slope))
+                roadY = laneY + abs(dis * sin(slope))
 
-        return [bo_x, bo_y]
+        return [roadX, roadY]
 
 
 class pidController:
@@ -189,38 +191,28 @@ class purePursuit:
     def getPath(self, msg):
         self.path = msg  # nav_msgs/Path
 
-    def getEgoStatus(self, msg):
-
-        self.current_vel = msg.velocity.x  # kph
-        self.vehicle_yaw = msg.heading / 180 * pi  # rad
-        self.current_postion.x = msg.position.x
-        self.current_postion.y = msg.position.y
-        self.current_postion.z = msg.position.z
-
     def steering_angle(self):
-        vehicle_position = self.current_postion
+        vehicle_position = VehicleStatus.position
+        vehicle_yaw = radians(VehicleStatus.heading)
+        current_vel = VehicleStatus.velocity.x
+
         rotated_point = Point()
         self.is_look_forward_point = False
 
         for i in self.path:
             dx = i[0] - vehicle_position.x
             dy = i[1] - vehicle_position.y
-            rr = sqrt(pow(dx, 2) + pow(dy, 2))
+            rr = sqrt(dx**2 + dy**2)
             if rr < 10:
-                rotated_point.x = (
-                    cos(self.vehicle_yaw) * dx + sin(self.vehicle_yaw) * dy
-                )
-                rotated_point.y = (
-                    sin(self.vehicle_yaw) * dx - cos(self.vehicle_yaw) * dy
-                )
+                rotated_point.x = cos(vehicle_yaw) * dx + sin(vehicle_yaw) * dy
+                rotated_point.y = sin(vehicle_yaw) * dx - cos(vehicle_yaw) * dy
 
                 if rotated_point.x > 0:
-                    dis = sqrt(pow(rotated_point.x, 2) + pow(rotated_point.y, 2))
+                    dis = sqrt(rotated_point.x**2 + rotated_point.y**2)
                     print("dis")
                     print("dis , lfd : ", dis, self.lfd)
                     if dis >= self.lfd:
-
-                        self.lfd = self.current_vel / 3
+                        self.lfd = current_vel / 3
                         if self.lfd < self.min_lfd:
                             self.lfd = self.min_lfd
                         elif self.lfd > self.max_lfd:
@@ -236,7 +228,6 @@ class purePursuit:
             self.steering = (
                 atan2((2 * self.vehicle_length * sin(theta)), self.lfd) * 180 / pi
             )  # deg
-            print(self.steering)
             return self.steering
         else:
             print("no found forward point")

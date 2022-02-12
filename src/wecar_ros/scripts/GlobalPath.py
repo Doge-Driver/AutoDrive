@@ -1,19 +1,25 @@
 from math import sqrt
+from typing import List, Tuple
 
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Point, PoseStamped
 from nav_msgs.msg import Path
 
 from Subscribers import VehicleStatus
-from utils import getFilePath
+from utils import distance, getFilePath
+
+__currentPathIndex = 0
+__globalPathPoints = []  # type: List[Point]
 
 
-def getGlobalPath():
-    return __globalPath
+def getGlobalPath():  # type: () -> List[Point]
+    return __globalPathPoints
 
 
-def getSlicedGlobalPath(interestPointCount=5):
-    lastPathIndex = min(__currentPathIndex + interestPointCount, len(__globalPath))
-    return __globalPath.poses[__currentPathIndex:lastPathIndex]
+def getSlicedGlobalPath(interestPointCount=5):  # type: (int) -> List[Point]
+    lastPathIndex = min(
+        __currentPathIndex + interestPointCount, len(__globalPathPoints)
+    )
+    return __globalPathPoints[__currentPathIndex:lastPathIndex]
 
 
 def getCurrentPathIndex():
@@ -27,40 +33,24 @@ def load(pathFileName="path/global_path.txt"):
     lines = file.readlines()
     for line in lines:
         x, y, z = map(float, line.split())
-
-        tmpPose = PoseStamped()
-        tmpPose.pose.position.x = x
-        tmpPose.pose.position.y = y
-        tmpPose.pose.position.z = z
-
-        __globalPath.poses.append(tmpPose)
+        __globalPathPoints.append(Point(x, y, z))
 
     file.close()
 
 
 def updatePathIndex():
+    global __currentPathIndex
     vehiclePosition = VehicleStatus.position
-    currentDistance = __calcDistance(
+    currentDistance = distance(
         vehiclePosition,
-        __globalPath.poses[__currentPathIndex].pose.position,
+        __globalPathPoints[__currentPathIndex],
     )
-    nextDistance = __calcDistance(
+    nextDistance = distance(
         vehiclePosition,
-        __globalPath.poses[__currentPathIndex + 1].pose.position,
+        __globalPathPoints[__currentPathIndex + 1],
     )
 
     if currentDistance > nextDistance:
         __currentPathIndex += 1
 
     return __currentPathIndex
-
-
-def __calcDistance(position1, position2):
-    return sqrt((position1.x - position2.x) ** 2 + (position1.y - position2.y) ** 2)
-
-
-__currentPathIndex = 0
-
-
-__globalPath = Path()
-__globalPath.header.frame_id = "/map"

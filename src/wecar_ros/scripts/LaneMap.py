@@ -1,10 +1,12 @@
 #! /usr/bin/python3
 from enum import Enum
 from math import sqrt
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np
+from cv2 import INTER_LINEAR
+from geometry_msgs.msg import Point
 
 from utils import getFilePath
 
@@ -22,10 +24,10 @@ SIM_MIN_X, SIM_MIN_Y = -SIM_WIDTH / 2, -SIM_HEIGHT / 2
 
 
 file = getFilePath("mapimg/labeledMap.png")
-map = cv2.imread(file, cv2.IMREAD_GRAYSCALE)  # type: np.ndarray
-__map = map
+MAP = cv2.imread(file, cv2.IMREAD_GRAYSCALE)  # type: np.ndarray
 
-IMG_HEIGHT, IMG_WIDTH = map.shape[:2]
+
+IMG_HEIGHT, IMG_WIDTH = MAP.shape[:2]
 IMG_MAX_X, IMG_MAX_Y = IMG_WIDTH, IMG_HEIGHT
 IMG_MIN_X, IMG_MIN_Y = 0, 0
 IMG_CENTER_X, IMG_CENTER_Y = int(IMG_WIDTH / 2), int(IMG_HEIGHT / 2)
@@ -43,7 +45,7 @@ def convertSizeImg2Sim(imgSize):
 
 def convertPointSim2Img(
     x, y
-):  # type: (int, int) -> Tuple[int, int] | Tuple[None, None]
+):  # type: (float, float) -> Tuple[int, int] | Tuple[None, None]
     if x > SIM_MAX_X or x < SIM_MIN_X:
         return None, None
     if y > SIM_MAX_Y or y < SIM_MIN_Y:
@@ -54,17 +56,13 @@ def convertPointSim2Img(
 
 def convertPointImg2Sim(
     x, y
-):  # type: (int, int) -> Tuple[int, int] | Tuple[None, None]
+):  # type: (int, int) -> Tuple[float, float] | Tuple[None, None]
     if x > IMG_MAX_X or x < IMG_MIN_X:
         return None, None
-    if x > IMG_MAX_Y or x < IMG_MIN_Y:
+    if y > IMG_MAX_Y or y < IMG_MIN_Y:
         return None, None
     scaledX, scaledY = x / SCALE_FACTOR, y / SCALE_FACTOR
     return SIM_MIN_X + scaledX, SIM_MAX_Y - scaledY
-
-
-def getMap(self):
-    return __map
 
 
 def findNearestLanePoint(simX, simY, ksize=0.5):  # SimScaled
@@ -79,40 +77,65 @@ def findNearestLanePoint(simX, simY, ksize=0.5):  # SimScaled
     }  # type: dict[int, tuple[int, int]]
 
     nearestPoint = {
-        LaneType.EDGE.value: (-1, -1),
-        LaneType.DOT.value: (-1, -1),
-        LaneType.CENTER.value: (-1, -1),
-        LaneType.STOP.value: (-1, -1),
+        # LaneType.EDGE.value: (-1, -1),
+        # LaneType.DOT.value: (-1, -1),
+        # LaneType.CENTER.value: (-1, -1),
+        # LaneType.STOP.value: (-1, -1),
+        # LaneType.EDGE.value: (0, 0),
+        # LaneType.DOT.value: (0, 0),
+        # LaneType.CENTER.value: (0, 0),
+        # LaneType.STOP.value: (0, 0),
     }  # type: dict[int, tuple[int, int]]
 
     for index, value in np.ndenumerate(
-        __map[
-            imgX - kSizeX : imgX + kSizeX,
+        MAP[
             imgY - kSizeY : imgY + kSizeY,
+            imgX - kSizeX : imgX + kSizeX,
         ]
     ):
-        # 안해도 안전할거라 믿어
-        # if not value in LaneType.name:
-        #     continue
+        if value == 0:
+            continue
+
         iy, ix = index
         distance = sqrt((imgX - ix) ** 2 + (imgY - iy) ** 2)
 
         if minDistance[value] > distance:
             minDistance[value] = convertSizeImg2Sim(distance)
             nearestPoint[value] = convertPointImg2Sim(iy, ix)
+            # minDistance[value] = distance
+            # nearestPoint[value] = ix + imgX - kSizeX, ix + imgY - kSizeY
 
     return nearestPoint, minDistance
 
 
-def findNearestLanePoints(simPoints):  # SimScaled
-    lanePoints = (
-        []
-    )  # type: List[tuple[dict[int, tuple[int, int]], dict[int, tuple[int, int]]]]
-    for point in simPoints:
-        x, y = point
-        lanePoints.append(findNearestLanePoint(x, y))
+def findNearestLanePoints(simPoints):
+    lanePoints = {
+        LaneType.EDGE.value: [],
+        LaneType.DOT.value: [],
+        LaneType.CENTER.value: [],
+        LaneType.STOP.value: [],
+    }
 
-    return lanePoints
+    minDistances = {
+        LaneType.EDGE.value: [],
+        LaneType.DOT.value: [],
+        LaneType.CENTER.value: [],
+        LaneType.STOP.value: [],
+    }
+    for point in simPoints:
+        nearestPoint, minDistance = findNearestLanePoint(point.x, point.y)
+
+        lanePoints[LaneType.EDGE.value].append(nearestPoint[LaneType.EDGE.value])
+        lanePoints[LaneType.DOT.value].append(nearestPoint[LaneType.DOT.value])
+        lanePoints[LaneType.CENTER.value].append(nearestPoint[LaneType.CENTER.value])
+        lanePoints[LaneType.STOP.value].append(nearestPoint[LaneType.STOP.value])
+
+        minDistances[LaneType.EDGE.value].append(minDistance[LaneType.EDGE.value])
+        minDistances[LaneType.DOT.value].append(minDistance[LaneType.DOT.value])
+        minDistances[LaneType.CENTER.value].append(minDistance[LaneType.CENTER.value])
+        minDistances[LaneType.STOP.value].append(minDistance[LaneType.STOP.value])
+
+    return lanePoints, minDistances
 
 
 def findRoadPoint(simX, simY, distanceFromLane=0.15):  # SimScaled
