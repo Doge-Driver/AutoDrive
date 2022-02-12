@@ -6,7 +6,7 @@ from time import time_ns
 
 import rospy
 
-from Subscriber import Camera
+from subscribers import Camera
 
 if __name__ == "__main__":
     rospy.init_node("camera_recorder", anonymous=True)

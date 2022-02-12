@@ -1,13 +1,15 @@
 #! /usr/bin/python3
-
 from enum import Enum
 from math import sqrt
 
 import cv2
 import numpy as np
+import rospy
 from rospkg import RosPack
 
-from Subscriber import *
+from subscribers import vehicleStatus
+
+# from wecar_ros.scripts.subscribers import vehicleStatus
 
 
 def getImgFilePath(imgFileName):
@@ -23,7 +25,7 @@ class LaneType(Enum):
     STOP = 4
 
 
-class LaneMap(SingletonInstance):
+class LaneMap:
     SIM_WIDTH, SIM_HEIGHT = 40, 12
     SIM_MAX_X, SIM_MAX_Y = SIM_WIDTH / 2, SIM_HEIGHT / 2
     SIM_MIN_X, SIM_MIN_Y = -SIM_WIDTH / 2, -SIM_HEIGHT / 2
@@ -163,9 +165,7 @@ while not rospy.is_shutdown():
     # Clone Map
     mapImg = colormap.copy()
 
-    # Retrieve & Convert Vehicle Point to Img Point
-    VehicleStatus().retrieve()
-    vehiclePoint = VehicleStatus().get().position
+    vehiclePoint = vehicleStatus.position
     x, y = map.convertPointSim2Img(vehiclePoint.x, vehiclePoint.y)
     if x is None or y is None:
         continue

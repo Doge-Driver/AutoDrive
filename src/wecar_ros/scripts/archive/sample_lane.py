@@ -733,7 +733,7 @@ class Lane:
         cv2.destroyAllWindows()
 
 
-from Subscriber import Camera
+from subscribers import Camera
 
 
 def main(image):

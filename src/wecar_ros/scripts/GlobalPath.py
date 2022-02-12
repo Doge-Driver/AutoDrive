@@ -1,13 +1,10 @@
-import sys
 from math import sqrt
-from typing import List
 
-import rospy
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
 from rospkg import RosPack
 
-from Subscriber import VehicleStatus
+from wecar_ros.scripts.subscribers import vehicleStatus as status
 
 
 class GlobalPath:
@@ -21,11 +18,11 @@ class GlobalPath:
     def getGlobalPath(self):
         return self.__globalPath
 
-    def getSlicedGlobalPath(self, interestPointCount = 5):
+    def getSlicedGlobalPath(self, interestPointCount=5):
         lastPathIndex = min(
             self.__currentPathIndex + interestPointCount, len(self.__globalPath)
         )
-        return self.__globalPath.poses[self.__currentPathIndex:lastPathIndex]
+        return self.__globalPath.poses[self.__currentPathIndex : lastPathIndex]
 
     def getCurrentPathIndex(self):
         return self.__currentPathIndex
@@ -48,7 +45,7 @@ class GlobalPath:
         file.close()
 
     def updatePathIndex(self):
-        vehiclePosition = VehicleStatus().retrieve().get().position
+        vehiclePosition = status.position
         currentDistance = self.__calcDistance(
             vehiclePosition,
             self.__globalPath.poses[self.__currentPathIndex].pose.position,

@@ -1,12 +1,11 @@
 #! /usr/bin/env python3
 
-from math import asin
+from math import asin, radians
 
 import rospy
 from std_msgs.msg import Float64
 
 from lib.utils import SingletonInstance
-from Subscriber import *
 
 
 class Vehicle(SingletonInstance):
