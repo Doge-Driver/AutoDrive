@@ -2,63 +2,65 @@ from math import sqrt
 
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
-from rospkg import RosPack
 
-from wecar_ros.scripts.subscribers import vehicleStatus as status
+from Subscribers import VehicleStatus
+from utils import getFilePath
 
 
-class GlobalPath:
-    __currentPathIndex = 0
+def getGlobalPath():
+    return __globalPath
 
-    def __init__(self, pathFileName):
-        self.__globalPath = Path()
-        self.__globalPath.header.frame_id = "/map"
-        self.__load(pathFileName)
 
-    def getGlobalPath(self):
-        return self.__globalPath
+def getSlicedGlobalPath(interestPointCount=5):
+    lastPathIndex = min(__currentPathIndex + interestPointCount, len(__globalPath))
+    return __globalPath.poses[__currentPathIndex:lastPathIndex]
 
-    def getSlicedGlobalPath(self, interestPointCount=5):
-        lastPathIndex = min(
-            self.__currentPathIndex + interestPointCount, len(self.__globalPath)
-        )
-        return self.__globalPath.poses[self.__currentPathIndex : lastPathIndex]
 
-    def getCurrentPathIndex(self):
-        return self.__currentPathIndex
+def getCurrentPathIndex():
+    return __currentPathIndex
 
-    def __load(self, pathFileName):
-        packageLocation = RosPack().get_path("wecar_ros")
-        file = open(f"{packageLocation}/path/{pathFileName}.txt", "r")
 
-        lines = file.readlines()
-        for line in lines:
-            x, y, z = map(float, line.split())
+def load(pathFileName="path/global_path.txt"):
+    filePath = getFilePath(pathFileName)
+    file = open(filePath, "r")
 
-            tmpPose = PoseStamped()
-            tmpPose.pose.position.x = x
-            tmpPose.pose.position.y = y
-            tmpPose.pose.position.z = z
+    lines = file.readlines()
+    for line in lines:
+        x, y, z = map(float, line.split())
 
-            self.__globalPath.poses.append(tmpPose)
+        tmpPose = PoseStamped()
+        tmpPose.pose.position.x = x
+        tmpPose.pose.position.y = y
+        tmpPose.pose.position.z = z
 
-        file.close()
+        __globalPath.poses.append(tmpPose)
 
-    def updatePathIndex(self):
-        vehiclePosition = status.position
-        currentDistance = self.__calcDistance(
-            vehiclePosition,
-            self.__globalPath.poses[self.__currentPathIndex].pose.position,
-        )
-        nextDistance = self.__calcDistance(
-            vehiclePosition,
-            self.__globalPath.poses[self.__currentPathIndex + 1].pose.position,
-        )
+    file.close()
 
-        if currentDistance > nextDistance:
-            self.__currentPathIndex += 1
 
-        return self.__currentPathIndex
+def updatePathIndex():
+    vehiclePosition = VehicleStatus.position
+    currentDistance = __calcDistance(
+        vehiclePosition,
+        __globalPath.poses[__currentPathIndex].pose.position,
+    )
+    nextDistance = __calcDistance(
+        vehiclePosition,
+        __globalPath.poses[__currentPathIndex + 1].pose.position,
+    )
 
-    def __calcDistance(self, position1, position2):
-        return sqrt((position1.x - position2.x) ** 2 + (position1.y - position2.y) ** 2)
+    if currentDistance > nextDistance:
+        __currentPathIndex += 1
+
+    return __currentPathIndex
+
+
+def __calcDistance(position1, position2):
+    return sqrt((position1.x - position2.x) ** 2 + (position1.y - position2.y) ** 2)
+
+
+__currentPathIndex = 0
+
+
+__globalPath = Path()
+__globalPath.header.frame_id = "/map"

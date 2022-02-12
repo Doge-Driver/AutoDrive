@@ -6,7 +6,7 @@ from geometry_msgs.msg import Point32
 from sensor_msgs.msg import LaserScan, PointCloud
 from std_msgs.msg import Header
 
-import wecar_ros.scripts.subscribers.vehicleStatus as vehicle
+from wecar_ros.scripts.Subscribers import VehicleStatus
 
 __isRetrieved = False
 __pcd_pub = rospy.Publisher("laser2pcd", PointCloud, queue_size=1)
@@ -27,14 +27,14 @@ ranges = []  # type: List[float]
 intensities = []
 
 
-def calcPoints():
-    pcd = PointCloud()
-    pcd.header.frame_id = header.frame_id
-    angle = ANGLE_YAW + radians(vehicle.heading)
+def convert2Points(angleOffset=0):
+    angle = ANGLE_YAW + angleOffset
+
+    points = []  # type: List[Point32]
 
     for range in ranges:
         if range < 10.0:
-            pcd.points.append(
+            points.append(
                 Point32(
                     x=range * cos(angle),  # + vehicleStatus.position.x,
                     y=range * sin(angle),  # + vehicleStatus.position.y,
@@ -42,12 +42,15 @@ def calcPoints():
             )
         angle += angleIncrement
 
-    return pcd
+    return points
 
 
-def publish():
+def publishPointCloud():
     global __pcd_pub
-    __pcd_pub.publish(calcPoints())
+    pcd = PointCloud()
+    pcd.header.frame_id = header.frame_id
+    pcd.points = convert2Points()
+    __pcd_pub.publish(pcd)
 
 
 def __setLidar(res):  # type: (LaserScan) -> None
@@ -63,8 +66,6 @@ def __setLidar(res):  # type: (LaserScan) -> None
     rangeMax = res.range_max
     ranges = res.ranges
     intensities = res.intensities
-
-    publish()
 
 
 rospy.Subscriber("/lidar2D", LaserScan, __setLidar)
