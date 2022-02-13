@@ -11,7 +11,7 @@ from numpy import True_
 import GlobalPath
 import LaneMap
 import Vehicle
-from LaneMap import LaneType
+from LaneMap import LaneType, findRoadPoint
 from planner_test import Planner, purePursuit
 from Subscribers import Lidar, VehicleStatus
 from utils import getFilePath
@@ -21,6 +21,10 @@ DEBUG = True
 
 def drawPointOnMap(x, y):
     pass
+
+
+def intPoint(x, y):
+    return int(x), int(y)
 
 
 def drawLidarOnMap():
@@ -38,8 +42,8 @@ def drawLidarOnMap():
 
         cv2.line(
             mapImg,
-            (mapLidarPointX, mapLidarPointY),
-            (mapLidarPointX, mapLidarPointY),
+            intPoint(mapLidarPointX, mapLidarPointY),
+            intPoint(mapLidarPointX, mapLidarPointY),
             255,
             3,
         )
@@ -64,7 +68,7 @@ while not rospy.is_shutdown():
 
     # GlobalPath
     GlobalPath.updatePathIndex()
-    slicedGlobalPathPoints = GlobalPath.getSlicedGlobalPath(100000)
+    slicedGlobalPathPoints = GlobalPath.getSlicedGlobalPath(10)
 
     # Lane Info
     lanePoints, distances = LaneMap.findNearestLanePoints(
@@ -73,11 +77,16 @@ while not rospy.is_shutdown():
 
     planner = Planner(lanePoints[LaneType.EDGE.value], lanePoints[LaneType.DOT.value])
 
+    roadPoints = LaneMap.findRoadPoints(slicedGlobalPathPoints)
+
+    # print("road points", LaneMap.findRoadPoints(simPoints=slicedGlobalPathPoints))
+
     mapSlicedGlobalPathPoints = []
     for point in slicedGlobalPathPoints:
         mapSlicedGlobalPathPoints.append(LaneMap.convertPointSim2Img(point.x, point.y))
 
     # TODO: use findNearestLanePoint from LaneMap module
+
     imgRoadPoints = planner.calcImgRoadPoints(
         mapSlicedGlobalPathPoints, lanePoints[LaneType.DOT.value], 2
     )
@@ -104,8 +113,8 @@ while not rospy.is_shutdown():
         # Vehicle
         cv2.rectangle(
             mapImg,
-            (x - 8, y - 8),
-            (x + 8, y + 8),
+            intPoint(x - 8, y - 8),
+            intPoint(x + 8, y + 8),
             255,
             -1,
         )
@@ -117,14 +126,14 @@ while not rospy.is_shutdown():
         for point in GlobalPath.getGlobalPath():
             tx, ty = point.x, point.y
             x, y = LaneMap.convertPointSim2Img(tx, ty)
-            cv2.line(mapImg, (x, y), (x, y), (255, 255, 0), 5)
+            cv2.line(mapImg, intPoint(x, y), intPoint(x, y), (255, 255, 0), 5)
 
         # Draw local Points
         for point in imgRoadPoints:
             cv2.line(
                 mapImg,
-                (int(point[0]), int(point[1])),
-                (int(point[0]), int(point[1])),
+                intPoint(int(point[0]), int(point[1])),
+                intPoint(int(point[0]), int(point[1])),
                 (0, 255, 255),
                 5,
             )
