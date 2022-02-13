@@ -45,13 +45,13 @@ def convertSizeImg2Sim(imgSize):
 
 def convertPointSim2Img(
     x, y
-):  # type: (float, float) -> Tuple[float, float] | Tuple[None, None]
+):  # type: (float, float) -> Tuple[int, int] | Tuple[None, None]
     if x > SIM_MAX_X or x < SIM_MIN_X:
         return None, None
     if y > SIM_MAX_Y or y < SIM_MIN_Y:
         return None, None
     scaledX, scaledY = x * SCALE_FACTOR, y * SCALE_FACTOR
-    return IMG_CENTER_X + scaledX, IMG_CENTER_Y - scaledY
+    return int(round(IMG_CENTER_X + scaledX)), int(round(IMG_CENTER_Y - scaledY))
 
 
 def convertPointImg2Sim(
@@ -153,6 +153,9 @@ def findRoadPoint(simPathPointX, simPathPointY, distanceFromLane=0.15):  # SimSc
             (imgPathPointX - imgLaneX) ** 2 + (imgPathPointY - imgLaneY) ** 2
         )
 
+        if vectorSize == 0:
+            continue
+
         vectorX = (imgPathPointX - imgLaneX) * imgDistanceFromLane / vectorSize
         vectorY = (imgPathPointY - imgLaneY) * imgDistanceFromLane / vectorSize
         roadPoint[key] = convertPointImg2Sim(imgLaneX + vectorX, imgLaneY + vectorY)
@@ -161,10 +164,19 @@ def findRoadPoint(simPathPointX, simPathPointY, distanceFromLane=0.15):  # SimSc
 
 
 def findRoadPoints(simPoints):  # SimScaled
-    roadPoints = []  # type: List[dict[int, tuple[int, int]]]
+    roadPoints = {
+        LaneType.EDGE.value: [],
+        LaneType.DOT.value: [],
+        LaneType.CENTER.value: [],
+        LaneType.STOP.value: [],
+    }  # type: dict[int, list]
     for point in simPoints:
         x, y = point.x, point.y
         roadPoint = findRoadPoint(x, y)
-        roadPoints.append(roadPoint)
+        roadPoints[LaneType.EDGE.value].append(roadPoint[LaneType.EDGE.value])
+        roadPoints[LaneType.DOT.value].append(roadPoint[LaneType.DOT.value])
+        roadPoints[LaneType.CENTER.value].append(roadPoint[LaneType.CENTER.value])
+        roadPoints[LaneType.STOP.value].append(roadPoint[LaneType.STOP.value])
+        # roadPoints.append(roadPoint)
 
     return roadPoints

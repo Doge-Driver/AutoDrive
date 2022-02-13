@@ -1,12 +1,12 @@
 #! /usr/bin/python3
 
 from math import radians
+from re import L
 from typing import List
 
 import cv2
 import rospy
 from geometry_msgs.msg import Point32
-from numpy import True_
 
 import GlobalPath
 import LaneMap
@@ -21,10 +21,6 @@ DEBUG = True
 
 def drawPointOnMap(x, y):
     pass
-
-
-def intPoint(x, y):
-    return int(x), int(y)
 
 
 def drawLidarOnMap():
@@ -42,9 +38,9 @@ def drawLidarOnMap():
 
         cv2.line(
             mapImg,
-            intPoint(mapLidarPointX, mapLidarPointY),
-            intPoint(mapLidarPointX, mapLidarPointY),
-            255,
+            (mapLidarPointX, mapLidarPointY),
+            (mapLidarPointX, mapLidarPointY),
+            (182, 89, 83),
             3,
         )
 
@@ -52,7 +48,7 @@ def drawLidarOnMap():
 rospy.init_node("doge_driver", anonymous=True)
 
 # Load Global Path
-GlobalPath.load("path/global_path.txt")
+GlobalPath.load("path/global_path_old.txt")
 
 # Load Colored Map for Debugging
 colorMapFile = getFilePath("mapimg/colorLabeledMap.png")
@@ -69,36 +65,19 @@ while not rospy.is_shutdown():
     # GlobalPath
     GlobalPath.updatePathIndex()
     slicedGlobalPathPoints = GlobalPath.getSlicedGlobalPath(10)
-
     # Lane Info
     lanePoints, distances = LaneMap.findNearestLanePoints(
         simPoints=slicedGlobalPathPoints
     )
 
     planner = Planner(lanePoints[LaneType.EDGE.value], lanePoints[LaneType.DOT.value])
-
     roadPoints = LaneMap.findRoadPoints(slicedGlobalPathPoints)
 
-    # print("road points", LaneMap.findRoadPoints(simPoints=slicedGlobalPathPoints))
-
-    mapSlicedGlobalPathPoints = []
-    for point in slicedGlobalPathPoints:
-        mapSlicedGlobalPathPoints.append(LaneMap.convertPointSim2Img(point.x, point.y))
-
-    # TODO: use findNearestLanePoint from LaneMap module
-
-    imgRoadPoints = planner.calcImgRoadPoints(
-        mapSlicedGlobalPathPoints, lanePoints[LaneType.DOT.value], 2
-    )
-
-    simRoadPoints = []
-    for point in imgRoadPoints:
-        tx, ty = point
-        simRoadPoints.append(LaneMap.convertPointImg2Sim(tx, ty))
-
     # Set Steering
-    pp.getPath(simRoadPoints)
+    pp.setPath(roadPoints[LaneType.DOT.value])
     steering = pp.steering_angle()
+    if steering is None:
+        steering = 0
 
     # DRIVE
     Vehicle.accel(1000)
@@ -113,8 +92,8 @@ while not rospy.is_shutdown():
         # Vehicle
         cv2.rectangle(
             mapImg,
-            intPoint(x - 8, y - 8),
-            intPoint(x + 8, y + 8),
+            (x - 8, y - 8),
+            (x + 8, y + 8),
             255,
             -1,
         )
@@ -126,14 +105,17 @@ while not rospy.is_shutdown():
         for point in GlobalPath.getGlobalPath():
             tx, ty = point.x, point.y
             x, y = LaneMap.convertPointSim2Img(tx, ty)
-            cv2.line(mapImg, intPoint(x, y), intPoint(x, y), (255, 255, 0), 5)
+            cv2.line(mapImg, (x, y), (x, y), (255, 255, 0), 5)
 
-        # Draw local Points
-        for point in imgRoadPoints:
+        for dotroadPoint in roadPoints[LaneType.DOT.value]:
+            tx, ty = dotroadPoint
+            if tx is None or ty is None:
+                continue
+            x, y = LaneMap.convertPointSim2Img(tx, ty)
             cv2.line(
                 mapImg,
-                intPoint(int(point[0]), int(point[1])),
-                intPoint(int(point[0]), int(point[1])),
+                (x, y),
+                (x, y),
                 (0, 255, 255),
                 5,
             )

@@ -188,7 +188,7 @@ class purePursuit:
         self.vehicle_length = 0.3
         self.steering = 0
 
-    def getPath(self, msg):
+    def setPath(self, msg):
         self.path = msg  # nav_msgs/Path
 
     def steering_angle(self):
@@ -200,6 +200,8 @@ class purePursuit:
         self.is_look_forward_point = False
 
         for i in self.path:
+            if i[0] is None or i[1] is None:
+                continue
             dx = i[0] - vehicle_position.x
             dy = i[1] - vehicle_position.y
             rr = sqrt(dx**2 + dy**2)
