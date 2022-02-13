@@ -57,7 +57,10 @@ def steerRadian(radianAngle=0):
     +: Steer Right
     -: Steer Left
     """
+    if radianAngle is None:
+        radianAngle = 0
     angle = 0.5 + 0.5 * radianAngle / STEER_LIMIT_RAD
+
     __steerPublisher.publish(angle)
 
 

@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 
-from math import atan2, cos, pi, radians, sin, sqrt
+from math import atan2, cos, pi, radians, sin, sqrt, tan
 
 import cv2
 import numpy as np
@@ -122,12 +122,12 @@ class Planner:
     def calcImgRoadPoints(self, local_path, dot_line, dis):
         roadPoints = []
         for i in range(len(dot_line)):  # points = local_path positions
-            x = local_path[i][0]
-            y = local_path[i][1]
+            x = local_path[i].x
+            y = local_path[i].y
             roadPoints.append(self.calcImgRoadPoint(x, y, dot_line[i], dis))
         return roadPoints
 
-    def calcImgRoadPoint(self, pathX, pathY, dot_line_point, dis=15):
+    def calcImgRoadPoint(self, pathX, pathY, dot_line_point, dis):
         laneX, laneY = dot_line_point
         if pathX == laneX:
             roadX = laneX
@@ -136,15 +136,15 @@ class Planner:
             else:
                 roadY = laneY + dis
         else:
-            slope = (pathY - laneY) / (pathX - laneX)
+            theta = atan2((pathY - laneY), (pathX - laneX))
             if laneX > pathX:
-                roadX = laneX - abs(dis * cos(slope))
+                roadX = laneX - abs(dis * cos(theta))
             else:
-                roadX = laneX + abs(dis * cos(slope))
+                roadX = laneX + abs(dis * cos(theta))
             if laneY > pathY:
-                roadY = laneY - abs(dis * sin(slope))
+                roadY = laneY - abs(dis * sin(theta))
             else:
-                roadY = laneY + abs(dis * sin(slope))
+                roadY = laneY + abs(dis * sin(theta))
 
         return [roadX, roadY]
 
@@ -191,17 +191,22 @@ class purePursuit:
     def setPath(self, msg):
         self.path = msg  # nav_msgs/Path
 
-    def steering_angle(self):
+    def steering_angle(self, local_path):
         vehicle_position = VehicleStatus.position
         vehicle_yaw = radians(VehicleStatus.heading)
         current_vel = VehicleStatus.velocity.x
-
+        sliced_path = []
         rotated_point = Point()
         self.is_look_forward_point = False
+        # print(len(self.path))
+        if len(self.path) < 8:
+            for i in local_path:
+                ix, iy = i.x, i.y
+                sliced_path.append((ix, iy))
+            # print("set")
+            self.path = sliced_path
 
         for i in self.path:
-            if i[0] is None or i[1] is None:
-                continue
             dx = i[0] - vehicle_position.x
             dy = i[1] - vehicle_position.y
             rr = sqrt(dx**2 + dy**2)
@@ -211,8 +216,8 @@ class purePursuit:
 
                 if rotated_point.x > 0:
                     dis = sqrt(rotated_point.x**2 + rotated_point.y**2)
-                    print("dis")
-                    print("dis , lfd : ", dis, self.lfd)
+                    # print("dis")
+                    # print("dis , lfd : ", dis, self.lfd)
                     if dis >= self.lfd:
                         self.lfd = current_vel / 3
                         if self.lfd < self.min_lfd:
@@ -227,8 +232,8 @@ class purePursuit:
         theta = atan2(rotated_point.y, rotated_point.x)
 
         if self.is_look_forward_point:
-            self.steering = (
-                atan2((2 * self.vehicle_length * sin(theta)), self.lfd) * 180 / pi
+            self.steering = atan2(
+                (2 * self.vehicle_length * sin(theta)), self.lfd
             )  # deg
             return self.steering
         else:
