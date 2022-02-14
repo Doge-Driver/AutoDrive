@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 
 from math import radians
+from time import time
 from typing import List
 
 import cv2
@@ -11,7 +12,7 @@ import GlobalPath
 import LaneMap
 import Vehicle
 from LaneMap import LaneType, findRoadPoint
-from planner_test import Planner, purePursuit
+from Planner import Cruise
 from Subscribers import Lidar, VehicleStatus
 from utils import getFilePath
 
@@ -22,9 +23,6 @@ rospy.init_node("doge_driver", anonymous=True)
 
 # Load Global Path
 GlobalPath.load("path/global_path_old.txt")
-
-
-pp = purePursuit()
 
 while not rospy.is_shutdown():
     # GlobalPath
@@ -40,13 +38,16 @@ while not rospy.is_shutdown():
         simPoints=slicedGlobalPathPoints
     )
 
-    planner = Planner(lanePoints[LaneType.EDGE.value], lanePoints[LaneType.DOT.value])
-    roadPoints = LaneMap.findRoadPoints(slicedGlobalPathPoints, 0.175)
-    pp.setPath(roadPoints[LaneType.DOT.value])
-    steering = pp.steering_angle(slicedGlobalPathPoints)
+    # Destinated Road Points
+    roadPoints = LaneMap.findRoadPoints(
+        slicedGlobalPathPoints, LaneMap.convertSizeImg2Sim(20.0)
+    )
+
+    steering = Cruise.steering(roadPoints[LaneType.DOT.value])
+    # velocity = Cruise.velocity(slicedGlobalPathPoints)
 
     # DRIVE
-    Vehicle.accel(1500)
+    Vehicle.accel(1000)
     Vehicle.steerRadian(steering)
 
     if DEBUG:
