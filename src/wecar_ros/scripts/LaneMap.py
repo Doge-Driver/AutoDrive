@@ -45,7 +45,7 @@ def convertSizeImg2Sim(imgSize):
 
 def convertPointSim2Img(
     x, y
-):  # type: (float, float) -> Tuple[int, int] | Tuple[None, None]
+):  # type: (float, float) -> Tuple[float, float] | Tuple[None, None]
     if x > SIM_MAX_X or x < SIM_MIN_X:
         return None, None
     if y > SIM_MAX_Y or y < SIM_MIN_Y:

@@ -18,42 +18,17 @@ from utils import getFilePath
 DEBUG = True
 
 
-def drawPoint(mapImg, simX, simY, color, thickness=3):
-    if (simX, simY) == (None, None):
-        return
-    x, y = LaneMap.convertPointSim2Img(simX, simY)
-    if (x, y) == (None, None):
-        return
-    x, y = int(x), int(y)
-    cv2.line(mapImg, (x, y), (x, y), color, thickness)
-
-
-def drawLidarOnMap(mapImg):
-    lidarPoints = Lidar.convert2Points(
-        angleOffset=radians(VehicleStatus.heading)
-    )  # type: List[Point32]
-
-    for point in lidarPoints:
-        lidarPointX, lidarPointY = (
-            VehicleStatus.position.x + point.x,
-            VehicleStatus.position.y + point.y,
-        )
-
-        drawPoint(mapImg, lidarPointX, lidarPointY, (182, 89, 83), 3)
-
-
 rospy.init_node("doge_driver", anonymous=True)
 
 # Load Global Path
-GlobalPath.load("path/global_path.txt")
+GlobalPath.load("path/global_path_old.txt")
 
 
 pp = purePursuit()
 
 while not rospy.is_shutdown():
-
     # GlobalPath
-    if GlobalPath.getCurrentPathIndex() + 1 >= len(GlobalPath.getGlobalPath()):
+    if GlobalPath.isLastPathIndex():
         Vehicle.brake()
         Vehicle.steerRadian(0)
         break
@@ -66,9 +41,7 @@ while not rospy.is_shutdown():
     )
 
     planner = Planner(lanePoints[LaneType.EDGE.value], lanePoints[LaneType.DOT.value])
-    roadPoints = LaneMap.findRoadPoints(
-        slicedGlobalPathPoints, LaneMap.convertSizeImg2Sim(15.0)
-    )
+    roadPoints = LaneMap.findRoadPoints(slicedGlobalPathPoints, 0.175)
     pp.setPath(roadPoints[LaneType.DOT.value])
     steering = pp.steering_angle(slicedGlobalPathPoints)
 
@@ -77,6 +50,29 @@ while not rospy.is_shutdown():
     Vehicle.steerRadian(steering)
 
     if DEBUG:
+
+        def drawPoint(mapImg, simX, simY, color, thickness=3):
+            if (simX, simY) == (None, None):
+                return
+            x, y = LaneMap.convertPointSim2Img(simX, simY)
+            if (x, y) == (None, None):
+                return
+            x, y = int(x), int(y)
+            cv2.line(mapImg, (x, y), (x, y), color, thickness)
+
+        def drawLidarOnMap(mapImg):
+            lidarPoints = Lidar.convert2Points(
+                angleOffset=radians(VehicleStatus.heading)
+            )  # type: List[Point32]
+
+            for point in lidarPoints:
+                lidarPointX, lidarPointY = (
+                    VehicleStatus.position.x + point.x,
+                    VehicleStatus.position.y + point.y,
+                )
+
+                drawPoint(mapImg, lidarPointX, lidarPointY, (182, 89, 83), 3)
+
         # Load Colored Map for Debugging
         colorMapFile = getFilePath("mapimg/colorLabeledMap.png")
         colormap = cv2.imread(colorMapFile, cv2.IMREAD_ANYCOLOR)

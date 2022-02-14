@@ -11,6 +11,10 @@ __currentPathIndex = 0
 __globalPathPoints = []  # type: List[Point]
 
 
+def isLastPathIndex():
+    return getCurrentPathIndex() + 1 >= len(__globalPathPoints)
+
+
 def getGlobalPath():  # type: () -> List[Point]
     return __globalPathPoints
 
