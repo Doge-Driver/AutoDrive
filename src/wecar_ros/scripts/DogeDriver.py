@@ -18,26 +18,28 @@ from utils import getFilePath
 DEBUG = True
 
 
-def drawLidarOnMap():
+def drawPoint(mapImg, simX, simY, color, thickness=3):
+    if (simX, simY) == (None, None):
+        return
+    x, y = LaneMap.convertPointSim2Img(simX, simY)
+    if (x, y) == (None, None):
+        return
+    x, y = int(x), int(y)
+    cv2.line(mapImg, (x, y), (x, y), color, thickness)
+
+
+def drawLidarOnMap(mapImg):
     lidarPoints = Lidar.convert2Points(
         angleOffset=radians(VehicleStatus.heading)
     )  # type: List[Point32]
 
-    for lidarPoint in lidarPoints:
-        mapLidarPointX, mapLidarPointY = LaneMap.convertPointSim2Img(
-            vehiclePoint.x + lidarPoint.x,
-            vehiclePoint.y + lidarPoint.y,
+    for point in lidarPoints:
+        lidarPointX, lidarPointY = (
+            VehicleStatus.position.x + point.x,
+            VehicleStatus.position.y + point.y,
         )
-        if mapLidarPointX is None or mapLidarPointY is None:
-            continue
 
-        cv2.line(
-            mapImg,
-            (mapLidarPointX, mapLidarPointY),
-            (mapLidarPointX, mapLidarPointY),
-            (182, 89, 83),
-            3,
-        )
+        drawPoint(mapImg, lidarPointX, lidarPointY, (182, 89, 83), 3)
 
 
 rospy.init_node("doge_driver", anonymous=True)
@@ -49,10 +51,6 @@ GlobalPath.load("path/global_path.txt")
 pp = purePursuit()
 
 while not rospy.is_shutdown():
-    vehiclePoint = VehicleStatus.position
-    x, y = LaneMap.convertPointSim2Img(vehiclePoint.x, vehiclePoint.y)
-    if x is None or y is None:
-        continue
 
     # GlobalPath
     if GlobalPath.getCurrentPathIndex() + 1 >= len(GlobalPath.getGlobalPath()):
@@ -71,7 +69,7 @@ while not rospy.is_shutdown():
     roadPoints = LaneMap.findRoadPoints(
         slicedGlobalPathPoints, LaneMap.convertSizeImg2Sim(15.0)
     )
-
+    pp.setPath(roadPoints[LaneType.DOT.value])
     steering = pp.steering_angle(slicedGlobalPathPoints)
 
     # DRIVE
@@ -89,37 +87,19 @@ while not rospy.is_shutdown():
         mapImg = colormap.copy()
 
         # Vehicle
-        cv2.rectangle(
-            mapImg,
-            (int(x) - 8, int(y) - 8),
-            (int(x) + 8, int(y) + 8),
-            255,
-            -1,
-        )
+        vehiclePoint = VehicleStatus.position
+        drawPoint(mapImg, vehiclePoint.x, vehiclePoint.y, (255, 0, 0), 15)
 
         # Lidar
-        # drawLidarOnMap()
+        drawLidarOnMap(mapImg)
 
         # Draw Global Points
         for point in GlobalPath.getGlobalPath():
-            tx, ty = point.x, point.y
-            tx, ty = LaneMap.convertPointSim2Img(tx, ty)
-            x, y = int(tx), int(ty)
-            cv2.line(mapImg, (x, y), (x, y), (255, 255, 0), 5)
+            drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
 
-        for dotroadPoint in roadPoints[LaneType.DOT.value]:
-            tx, ty = dotroadPoint
-            if tx is None or ty is None:
-                continue
-            tx, ty = LaneMap.convertPointSim2Img(tx, ty)
-            x, y = int(tx), int(ty)
-            cv2.line(
-                mapImg,
-                (x, y),
-                (x, y),
-                (0, 255, 255),
-                5,
-            )
+        # Draw DOT lane Points
+        for point in roadPoints[LaneType.DOT.value]:
+            drawPoint(mapImg, point[0], point[1], (0, 0, 255), 5)
 
         # cv2 window
         cv2.imshow("img", mapImg)
