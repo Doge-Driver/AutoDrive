@@ -1,11 +1,15 @@
 #! /usr/bin/env python3
 
-from math import asin, radians
+from math import asin, cos, degrees, radians, sin
 
+import numpy as np
 import rospy
 from std_msgs.msg import Float64
 
+import LaneMap
 import Vehicle
+from LaneMap import LaneType
+from Subscribers import VehicleStatus
 
 VEHICLE_LENGTH = 0.43
 VEHICLE_WIDTH = 0.2
@@ -71,6 +75,39 @@ def steerRadius(radius):
     else:
         radianAngle = asin(VEHICLE_WHEEL_BASE / radius)
     steerRadian(radianAngle)
+
+
+LEFT_LANE_ANGLE = radians(90)
+FRONT_LANE_ANGLE = 0
+RIGHT_LANE_ANGLE = radians(-90)
+
+
+def getLane(angle, findRange=0.7):
+    theta = -radians(VehicleStatus.heading) - angle
+    imgRange = int(LaneMap.convertSizeSim2Img(findRange))
+
+    imgVehicleX, imgVehicleY = LaneMap.convertPointSim2Img(
+        VehicleStatus.position.x, VehicleStatus.position.y
+    )
+
+    for r in range(1, imgRange):
+        x, y = r * cos(theta), r * sin(theta)  # Polar Coordinates to Cartesian
+        x, y = int(x + imgVehicleX), int(y + imgVehicleY)
+        if LaneMap.MAP[y][x] != 0:
+            return LaneMap.MAP[y][x], LaneMap.convertSizeImg2Sim(r)
+    return 0, None
+
+
+def getFrontLane():
+    return getLane(FRONT_LANE_ANGLE, 0.7)
+
+
+def getLeftLane():
+    return getLane(LEFT_LANE_ANGLE, 0.4)
+
+
+def getRightLane():
+    return getLane(RIGHT_LANE_ANGLE, 0.4)
 
 
 if __name__ == "__main__":
