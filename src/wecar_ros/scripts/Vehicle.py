@@ -57,6 +57,12 @@ def steer(angle=0.5):
     __steerPublisher.publish(angle)
 
 
+def steerDegree(degreeAngle=0):
+    if degreeAngle is None:
+        degreeAngle = 0
+    angle = 0.5 + 0.5 * degreeAngle / STEER_LIMIT_DEG
+
+
 def steerRadian(radianAngle=0):
     """
     +: Steer Right

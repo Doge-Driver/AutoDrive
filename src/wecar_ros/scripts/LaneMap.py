@@ -37,7 +37,7 @@ SCALE_FACTOR = IMG_WIDTH / SIM_WIDTH  # IMG_WIDTH / SIM_WIDTH == IMG_HEIGHT / SI
 
 def safeMapAccess(x, y):
     x, y = int(x), int(y)
-    if x < 0 or y < 0 or x > IMG_WIDTH or y > IMG_HEIGHT:
+    if x < 0 or y < 0 or x >= IMG_WIDTH or y >= IMG_HEIGHT:
         return 0
     return MAP[y][x]
 
@@ -149,111 +149,6 @@ def findNearestLanePoints(simPoints):
     return lanePoints, minDistances
 
 
-def findRoadPoint(simPathPointX, simPathPointY, distanceFromLane=0.175):  # SimScaled
-    imgPathPointX, imgPathPointY = convertPointSim2Img(simPathPointX, simPathPointY)
-    imgDistanceFromLane = convertSizeSim2Img(distanceFromLane)
-    nearestLanePoint, nearestLaneDistance = findNearestLanePoint(
-        simPathPointX, simPathPointY
-    )
-
-    roadPoint = {
-        LaneType.EDGE.value: (None, None),
-        LaneType.DOT.value: (None, None),
-        LaneType.CENTER.value: (None, None),
-        LaneType.STOP.value: (None, None),
-    }
-
-    for key, value in nearestLanePoint.items():
-        laneX, laneY = value
-        if laneX == None or laneY == None:
-            continue
-        imgLaneX, imgLaneY = convertPointSim2Img(laneX, laneY)
-        vectorSize = sqrt(
-            (imgPathPointX - imgLaneX) ** 2 + (imgPathPointY - imgLaneY) ** 2
-        )
-
-        if vectorSize == 0:
-            continue
-
-        vectorX = (imgPathPointX - imgLaneX) * imgDistanceFromLane / vectorSize
-        vectorY = (imgPathPointY - imgLaneY) * imgDistanceFromLane / vectorSize
-        roadPoint[key] = convertPointImg2Sim(imgLaneX + vectorX, imgLaneY + vectorY)
-
-    sortedNearestLaneDistance = sorted(
-        nearestLaneDistance.items(), key=operator.itemgetter(1)
-    )
-
-    cnt = 0
-
-    for (laneType, distance) in sortedNearestLaneDistance[0:2]:
-        if distance < 0.3:
-            cnt += 1
-
-    if cnt == 2:
-        for (laneType, _) in sortedNearestLaneDistance[0:2]:
-            roadPoint[laneType] = (0, 0)
-        for (laneType, distance) in sortedNearestLaneDistance[0:2]:
-            nx, ny = nearestLanePoint[laneType]
-            rx, ry = roadPoint[laneType]
-            roadPoint[laneType] = (rx + nx / cnt, ry + ny / cnt)
-
-    return roadPoint
-
-
-def findRoadPoints(simPoints, distance=0.175):  # SimScaled
-    roadPoints = {
-        LaneType.EDGE.value: [],
-        LaneType.DOT.value: [],
-        LaneType.CENTER.value: [],
-        LaneType.STOP.value: [],
-    }  # type: dict[int, list]
-    for point in simPoints:
-        x, y = point.x, point.y
-        roadPoint = findRoadPoint(x, y, distance)
-        if roadPoint[LaneType.EDGE.value] != (None, None):
-            roadPoints[LaneType.EDGE.value].append(roadPoint[LaneType.EDGE.value])
-        if roadPoint[LaneType.DOT.value] != (None, None):
-            roadPoints[LaneType.DOT.value].append(roadPoint[LaneType.DOT.value])
-        if roadPoint[LaneType.CENTER.value] != (None, None):
-            roadPoints[LaneType.CENTER.value].append(roadPoint[LaneType.CENTER.value])
-        if roadPoint[LaneType.STOP.value] != (None, None):
-            roadPoints[LaneType.STOP.value].append(roadPoint[LaneType.STOP.value])
-
-    return roadPoints
-
-
-def findRoadPointJW(pathPoint, lanePoint, distance):
-    pathX, pathY = pathPoint
-    laneX, laneY = lanePoint
-    if pathX == laneX:
-        roadX = laneX
-        if laneY > pathY:
-            roadY = laneY - distance
-        else:
-            roadY = laneY + distance
-    else:
-        theta = atan2((pathY - laneY), (pathX - laneX))
-        if laneX > pathX:
-            roadX = laneX - abs(distance * cos(theta))
-        else:
-            roadX = laneX + abs(distance * cos(theta))
-        if laneY > pathY:
-            roadY = laneY - abs(distance * sin(theta))
-        else:
-            roadY = laneY + abs(distance * sin(theta))
-
-    return (roadX, roadY)
-
-
-def findRoadPointsJW(pathPoint, lanePoints, distance):
-    roadPoints = []
-    for i in range(len(lanePoints)):  # points = local_path positions
-        x, y = pathPoint[i].x, pathPoint[i].y
-        roadPoints.append(findRoadPointJW((x, y), lanePoints[i], distance))
-
-    return roadPoints
-
-
 intersectionPoints = [convertPointImg2Sim(2063, 462)]
 
 
@@ -262,3 +157,51 @@ def isIntersection():
         if Vehicle.distanceWith(point) < 3.0:
             return True
     return False
+
+
+def findRoadPoints(slicedGlobalPath, potential):
+    imgGlobal_path = []
+    for point in slicedGlobalPath:
+        imgGlobal_path.append(convertPointSim2Img(point.x, point.y))
+    road_path = []
+    px, py = imgGlobal_path[0][0], imgGlobal_path[0][1]
+    for point in imgGlobal_path:
+        rx, ry = findRoadPoint(
+            point[0], point[1], potential
+        )  # rx,ry is current roadPoint, px,py is previous roadpoint
+        road_path.append(
+            findRoadPoint(px + (rx - px) / 2, py + (ry - py) / 2, potential)
+        )
+        road_path.append(
+            findRoadPoint(px + 3 * (rx - px) / 4, py + 3 * (ry - py) / 4, potential)
+        )
+        road_path.append(
+            findRoadPoint(px + (rx - px) / 4, py + (ry - py) / 4, potential)
+        )
+        px, py = rx, ry
+        road_path.append([rx, ry])
+
+    sim_boRoadPoints = []
+    for point in road_path:
+        tx, ty = point
+        tx, ty = convertPointImg2Sim(tx, ty)
+        sim_boRoadPoints.append((tx, ty))
+
+    return sim_boRoadPoints
+
+
+def findRoadPoint(pathX, pathY, potential):
+    float_px = pathX - int(pathX)
+    float_py = pathY - int(pathY)
+    pathX = int(pathX)
+    pathY = int(pathY)
+
+    premin = 0
+    minn = 1
+
+    while premin != minn:
+        premin = minn
+        minindex = np.argmin(potential[pathY - 1 : pathY + 2, pathX - 1 : pathX + 2])
+        minn = potential[pathY - 1 + int(minindex / 3)][pathX - 1 + minindex % 3]
+        pathY, pathX = int(pathY - 1 + minindex / 3), int(pathX - 1 + minindex % 3)
+    return (pathX + float_px, pathY + float_py)

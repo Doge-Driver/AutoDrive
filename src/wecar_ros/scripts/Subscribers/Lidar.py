@@ -24,6 +24,8 @@ rangeMax = 0.0
 ranges = []  # type: List[float]
 intensities = []
 
+rotatedRanges = []
+
 
 def convert2Points(angleOffset=0):
     angle = ANGLE_YAW + angleOffset
@@ -52,7 +54,7 @@ def publishPointCloud():
 
 
 def __setLidar(res):  # type: (LaserScan) -> None
-    global __isRetrieved, header, angleMin, angleMax, angleIncrement, timeIncrement, scanTime, rangeMin, rangeMax, ranges, intensities
+    global __isRetrieved, header, angleMin, angleMax, angleIncrement, timeIncrement, scanTime, rangeMin, rangeMax, ranges, intensities, rotatedRanges
     __isRetrieved = True
     header = res.header
     angleMin = res.angle_min
@@ -64,6 +66,8 @@ def __setLidar(res):  # type: (LaserScan) -> None
     rangeMax = res.range_max
     ranges = res.ranges
     intensities = res.intensities
+
+    rotatedRanges = ranges[180:360] + ranges[0:180]
 
 
 rospy.Subscriber("/lidar2D", LaserScan, __setLidar)

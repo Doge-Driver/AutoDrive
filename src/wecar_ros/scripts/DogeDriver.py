@@ -10,6 +10,7 @@ from geometry_msgs.msg import Point32
 
 import GlobalPath
 import LaneMap
+import Obstacle
 import Vehicle
 from LaneMap import LaneType, findRoadPoint
 from Planner import Cruise
@@ -18,14 +19,44 @@ from utils import getFilePath
 
 DEBUG = True
 
+if DEBUG:
+    # Load Colored Map for Debugging
+    colorMapFile = getFilePath("mapimg/colorLabeledMap.png")
+    colormap = cv2.imread(colorMapFile, cv2.IMREAD_ANYCOLOR)
+    def drawPoint(mapImg, simX, simY, color, thickness=3):
+        if (simX, simY) == (None, None):
+            return
+        x, y = LaneMap.convertPointSim2Img(simX, simY)
+        if (x, y) == (None, None):
+            return
+        x, y = int(x), int(y)
+        cv2.line(mapImg, (x, y), (x, y), color, thickness)
+
+
+    def drawLidarOnMap(mapImg):
+        lidarPoints = Lidar.convert2Points(
+            angleOffset=radians(VehicleStatus.heading)
+        )  # type: List[Point32]
+
+        for point in lidarPoints:
+            lidarPointX, lidarPointY = (
+                VehicleStatus.position.x + point.x,
+                VehicleStatus.position.y + point.y,
+            )
+
+            drawPoint(mapImg, lidarPointX, lidarPointY, (182, 89, 83), 3)
+
 
 rospy.init_node("doge_driver", anonymous=True)
 rospy.on_shutdown(Vehicle.stop)
 
 # Load Global Path
-GlobalPath.load("path/global_path.txt")
+GlobalPath.load("path/global_path4.txt")
 
 doneMission1 = False
+
+potentialFile = getFilePath("mapimg/Potential_v3.PNG")
+potential = cv2.imread(potentialFile, cv2.IMREAD_UNCHANGED)
 
 while not rospy.is_shutdown():
     # GlobalPath
@@ -56,56 +87,30 @@ while not rospy.is_shutdown():
         while not TrafficLight.isLeftGreen():
             Vehicle.brake()
 
-    # # MISSION4: Avoid Static Obstacles
-    # while Obstacle.isStaticObstacleDetected():
-    #     evasionPoint = Obstacle.getEvasionPoint()
-    #     while Vehicle.distanceWith(evasionPoint) < 0.2:
-    #         Cruise.steering([evasionPoint])
-    #         Cruise.velocity([evasionPoint])
+    # MISSION4: Avoid Static Obstacles
+    while Obstacle.isStaticObstacleDetected():
+        evasionPoint = Obstacle.getEvasionPoint()
+        drawPoint()
+        while Vehicle.distanceWith(evasionPoint) < 0.2:
+            Cruise.velocity([evasionPoint])
+            Cruise.steering([evasionPoint])
 
-    # # MISSION5: Emergency Brake when Dynamic Obstacles
-    # while Obstacle.isDynamicObstacleDetected():
-    #     Vehicle.brake()
+    # MISSION5: Emergency Brake when Dynamic Obstacles
+    while Obstacle.isDynamicObstacleDetected():
+        Vehicle.brake()
 
     # Find Destinated Road Points
-    roadPoints = LaneMap.findRoadPoints(
-        slicedGlobalPathPoints, LaneMap.convertSizeImg2Sim(20.0)
-    )
+    roadPoints = LaneMap.findRoadPoints(slicedGlobalPathPoints, potential)
 
-    steering = Cruise.steering(roadPoints[LaneType.DOT.value])
-    # velocity = Cruise.velocity(slicedGlobalPathPoints)
+    velocity = Cruise.velocity(slicedGlobalPathPoints)
+    steering = Cruise.steering(roadPoints)
 
     # DRIVE
-    Vehicle.accel(1000)
+    Vehicle.accel(velocity)
     Vehicle.steerRadian(steering)
 
     if DEBUG:
 
-        def drawPoint(mapImg, simX, simY, color, thickness=3):
-            if (simX, simY) == (None, None):
-                return
-            x, y = LaneMap.convertPointSim2Img(simX, simY)
-            if (x, y) == (None, None):
-                return
-            x, y = int(x), int(y)
-            cv2.line(mapImg, (x, y), (x, y), color, thickness)
-
-        def drawLidarOnMap(mapImg):
-            lidarPoints = Lidar.convert2Points(
-                angleOffset=radians(VehicleStatus.heading)
-            )  # type: List[Point32]
-
-            for point in lidarPoints:
-                lidarPointX, lidarPointY = (
-                    VehicleStatus.position.x + point.x,
-                    VehicleStatus.position.y + point.y,
-                )
-
-                drawPoint(mapImg, lidarPointX, lidarPointY, (182, 89, 83), 3)
-
-        # Load Colored Map for Debugging
-        colorMapFile = getFilePath("mapimg/colorLabeledMap.png")
-        colormap = cv2.imread(colorMapFile, cv2.IMREAD_ANYCOLOR)
 
         Lidar.publishPointCloud()
 
@@ -144,7 +149,7 @@ while not rospy.is_shutdown():
         #     drawPoint(mapImg, midX, midY, (0, 0, 255), 5)
 
         # Draw DOT lane Points
-        for point in roadPoints[LaneType.DOT.value]:
+        for point in roadPoints:
             drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
 
         vx, vy = LaneMap.convertPointSim2Img(
