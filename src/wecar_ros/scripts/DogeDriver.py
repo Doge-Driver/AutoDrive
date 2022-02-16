@@ -23,6 +23,7 @@ if DEBUG:
     # Load Colored Map for Debugging
     colorMapFile = getFilePath("mapimg/colorLabeledMap.png")
     colormap = cv2.imread(colorMapFile, cv2.IMREAD_ANYCOLOR)
+
     def drawPoint(mapImg, simX, simY, color, thickness=3):
         if (simX, simY) == (None, None):
             return
@@ -31,7 +32,6 @@ if DEBUG:
             return
         x, y = int(x), int(y)
         cv2.line(mapImg, (x, y), (x, y), color, thickness)
-
 
     def drawLidarOnMap(mapImg):
         lidarPoints = Lidar.convert2Points(
@@ -51,7 +51,7 @@ rospy.init_node("doge_driver", anonymous=True)
 rospy.on_shutdown(Vehicle.stop)
 
 # Load Global Path
-GlobalPath.load("path/global_path4.txt")
+GlobalPath.load("path/object_test.txt")
 
 doneMission1 = False
 
@@ -65,7 +65,6 @@ while not rospy.is_shutdown():
         rospy.signal_shutdown("GOAL")
         break
     GlobalPath.updatePathIndex()
-    slicedGlobalPathPoints = GlobalPath.getSlicedGlobalPath(10)
 
     # Update Lane Info Nearby Vehicle
     Vehicle.updateNearbyLanes()
@@ -83,35 +82,36 @@ while not rospy.is_shutdown():
     # MISSION2: Wait for Rotary vehicles
 
     # MISSION3: Traffic Light
-    if LaneMap.isIntersection() and Vehicle.isOnStopLine():
+    elif LaneMap.isIntersection() and Vehicle.isOnStopLine():
         while not TrafficLight.isLeftGreen():
             Vehicle.brake()
 
     # MISSION4: Avoid Static Obstacles
-    while Obstacle.isStaticObstacleDetected():
+    elif Obstacle.isNearby():
+        print("obstacle detected!!")
         evasionPoint = Obstacle.getEvasionPoint()
-        drawPoint()
-        while Vehicle.distanceWith(evasionPoint) < 0.2:
-            Cruise.velocity([evasionPoint])
-            Cruise.steering([evasionPoint])
+        print(f"evasion point {evasionPoint}")
+        velocity = Cruise.velocity([evasionPoint])
+        steering = Cruise.steering([evasionPoint])
 
     # MISSION5: Emergency Brake when Dynamic Obstacles
-    while Obstacle.isDynamicObstacleDetected():
+    elif Obstacle.isDynamicObstacleDetected():
         Vehicle.brake()
 
-    # Find Destinated Road Points
-    roadPoints = LaneMap.findRoadPoints(slicedGlobalPathPoints, potential)
+    else:
+        # Cruise
+        slicedGlobalPathPoints = GlobalPath.getSlicedGlobalPath(10)
+        # Find Destinated Road Points
+        roadPoints = LaneMap.findRoadPoints(slicedGlobalPathPoints, potential)
 
-    velocity = Cruise.velocity(slicedGlobalPathPoints)
-    steering = Cruise.steering(roadPoints)
+        velocity = Cruise.velocity(slicedGlobalPathPoints)
+        steering = Cruise.steering(roadPoints)
 
     # DRIVE
     Vehicle.accel(velocity)
     Vehicle.steerRadian(steering)
 
     if DEBUG:
-
-
         Lidar.publishPointCloud()
 
         # Clone Map
@@ -122,7 +122,7 @@ while not rospy.is_shutdown():
         drawPoint(mapImg, vehiclePoint.x, vehiclePoint.y, (255, 0, 0), 15)
 
         # Lidar
-        # drawLidarOnMap(mapImg)
+        drawLidarOnMap(mapImg)
 
         # Draw Global Points
         for point in GlobalPath.getGlobalPath():

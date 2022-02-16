@@ -62,6 +62,8 @@ def velocity_plan(road_point, velocity=2.4):  # road_point => shape =[n,2]
                 )
             )
         slope_list.append(slope)
+    if len(slope_list) == 0:
+        return 0.7
     slope_min = min(slope_list)
     slope_max = max(slope_list)
     return velocity - 3.8 * (slope_max - slope_min)
