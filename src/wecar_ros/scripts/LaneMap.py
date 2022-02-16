@@ -1,13 +1,13 @@
 #! /usr/bin/python3
+import operator
 from enum import Enum
 from math import atan2, cos, sin, sqrt
-from typing import Dict, List, Tuple
+from typing import Tuple
 
 import cv2
 import numpy as np
-from cv2 import INTER_LINEAR
-from geometry_msgs.msg import Point
 
+import Vehicle
 from utils import getFilePath
 
 
@@ -35,8 +35,15 @@ IMG_CENTER_X, IMG_CENTER_Y = int(IMG_WIDTH / 2), int(IMG_HEIGHT / 2)
 SCALE_FACTOR = IMG_WIDTH / SIM_WIDTH  # IMG_WIDTH / SIM_WIDTH == IMG_HEIGHT / SIM_HEIGHT
 
 
+def safeMapAccess(x, y):
+    x, y = int(x), int(y)
+    if x < 0 or y < 0 or x > IMG_WIDTH or y > IMG_HEIGHT:
+        return 0
+    return MAP[y][x]
+
+
 def convertSizeSim2Img(simSize):
-    return int(simSize * SCALE_FACTOR)
+    return simSize * SCALE_FACTOR
 
 
 def convertSizeImg2Sim(imgSize):
@@ -74,7 +81,7 @@ def findNearestLanePoint(simX, simY, ksize=0.5):  # SimScaled
         LaneType.DOT.value: 100000,
         LaneType.CENTER.value: 100000,
         LaneType.STOP.value: 100000,
-    }  # type: dict[int, tuple[int, int]]
+    }  # type: dict[int, int]
 
     nearestPoint = {
         LaneType.EDGE.value: (None, None),
@@ -145,7 +152,9 @@ def findNearestLanePoints(simPoints):
 def findRoadPoint(simPathPointX, simPathPointY, distanceFromLane=0.175):  # SimScaled
     imgPathPointX, imgPathPointY = convertPointSim2Img(simPathPointX, simPathPointY)
     imgDistanceFromLane = convertSizeSim2Img(distanceFromLane)
-    nearestLanePoint, _ = findNearestLanePoint(simPathPointX, simPathPointY)
+    nearestLanePoint, nearestLaneDistance = findNearestLanePoint(
+        simPathPointX, simPathPointY
+    )
 
     roadPoint = {
         LaneType.EDGE.value: (None, None),
@@ -169,6 +178,24 @@ def findRoadPoint(simPathPointX, simPathPointY, distanceFromLane=0.175):  # SimS
         vectorX = (imgPathPointX - imgLaneX) * imgDistanceFromLane / vectorSize
         vectorY = (imgPathPointY - imgLaneY) * imgDistanceFromLane / vectorSize
         roadPoint[key] = convertPointImg2Sim(imgLaneX + vectorX, imgLaneY + vectorY)
+
+    sortedNearestLaneDistance = sorted(
+        nearestLaneDistance.items(), key=operator.itemgetter(1)
+    )
+
+    cnt = 0
+
+    for (laneType, distance) in sortedNearestLaneDistance[0:2]:
+        if distance < 0.3:
+            cnt += 1
+
+    if cnt == 2:
+        for (laneType, _) in sortedNearestLaneDistance[0:2]:
+            roadPoint[laneType] = (0, 0)
+        for (laneType, distance) in sortedNearestLaneDistance[0:2]:
+            nx, ny = nearestLanePoint[laneType]
+            rx, ry = roadPoint[laneType]
+            roadPoint[laneType] = (rx + nx / cnt, ry + ny / cnt)
 
     return roadPoint
 
@@ -225,3 +252,13 @@ def findRoadPointsJW(pathPoint, lanePoints, distance):
         roadPoints.append(findRoadPointJW((x, y), lanePoints[i], distance))
 
     return roadPoints
+
+
+intersectionPoints = [convertPointImg2Sim(2063, 462)]
+
+
+def isIntersection():
+    for point in intersectionPoints:
+        if Vehicle.distanceWith(point) < 3.0:
+            return True
+    return False

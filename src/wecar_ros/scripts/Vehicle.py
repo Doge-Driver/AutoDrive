@@ -10,6 +10,7 @@ import LaneMap
 import Vehicle
 from LaneMap import LaneType
 from Subscribers import VehicleStatus
+from utils import calcDistance
 
 VEHICLE_LENGTH = 0.43
 VEHICLE_WIDTH = 0.2
@@ -77,6 +78,11 @@ def steerRadius(radius):
     steerRadian(radianAngle)
 
 
+def stop():
+    brake()
+    steerRadian(0)
+
+
 LEFT_LANE_ANGLE = radians(90)
 FRONT_LANE_ANGLE = 0
 RIGHT_LANE_ANGLE = radians(-90)
@@ -93,21 +99,44 @@ def getLane(angle, findRange=0.7):
     for r in range(1, imgRange):
         x, y = r * cos(theta), r * sin(theta)  # Polar Coordinates to Cartesian
         x, y = int(x + imgVehicleX), int(y + imgVehicleY)
-        if LaneMap.MAP[y][x] != 0:
-            return LaneMap.MAP[y][x], LaneMap.convertSizeImg2Sim(r)
+        if LaneMap.safeMapAccess(x, y) != 0:
+            return LaneMap.safeMapAccess(x, y), LaneMap.convertSizeImg2Sim(r)
     return 0, None
 
 
+frontLane, frontLaneDistance = 0, 0.0
+leftLane, leftLaneDistance = 0, 0.0
+rightLane, rightLaneDistance = 0, 0.0
+
+
 def getFrontLane():
-    return getLane(FRONT_LANE_ANGLE, 0.7)
+    global frontLane, frontLaneDistance
+    frontLane, frontLaneDistance = getLane(FRONT_LANE_ANGLE, 0.9)
+    return frontLane, frontLaneDistance
 
 
 def getLeftLane():
-    return getLane(LEFT_LANE_ANGLE, 0.4)
+    global leftLane, leftLaneDistance
+    leftLane, leftLaneDistance = getLane(LEFT_LANE_ANGLE, 0.4)
+    return leftLane, leftLaneDistance
 
 
 def getRightLane():
-    return getLane(RIGHT_LANE_ANGLE, 0.4)
+    global rightLane, rightLaneDistance
+    rightLane, rightLaneDistance = getLane(RIGHT_LANE_ANGLE, 0.4)
+    return rightLane, rightLaneDistance
+
+
+def updateNearbyLanes():
+    return getLeftLane(), getFrontLane(), getRightLane()
+
+
+def isOnStopLine():
+    return frontLane == LaneType.STOP.value and frontLaneDistance < 0.6
+
+
+def distanceWith(point):
+    return calcDistance(VehicleStatus.position, point)
 
 
 if __name__ == "__main__":

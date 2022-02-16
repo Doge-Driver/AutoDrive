@@ -1,11 +1,9 @@
-from math import sqrt
-from typing import List, Tuple
+from typing import List
 
-from geometry_msgs.msg import Point, PoseStamped
-from nav_msgs.msg import Path
+from geometry_msgs.msg import Point
 
-from Subscribers import VehicleStatus
-from utils import distance, getFilePath
+import Vehicle
+from utils import getFilePath
 
 __currentPathIndex = 0
 __globalPathPoints = []  # type: List[Point]
@@ -44,15 +42,8 @@ def load(pathFileName="path/global_path.txt"):
 
 def updatePathIndex():
     global __currentPathIndex
-    vehiclePosition = VehicleStatus.position
-    currentDistance = distance(
-        vehiclePosition,
-        __globalPathPoints[__currentPathIndex],
-    )
-    nextDistance = distance(
-        vehiclePosition,
-        __globalPathPoints[__currentPathIndex + 1],
-    )
+    currentDistance = Vehicle.distanceWith(__globalPathPoints[__currentPathIndex])
+    nextDistance = Vehicle.distanceWith(__globalPathPoints[__currentPathIndex + 1])
 
     if currentDistance > nextDistance:
         __currentPathIndex += 1
