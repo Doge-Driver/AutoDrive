@@ -87,7 +87,7 @@ while not rospy.is_shutdown():
     # Minimum Safe Distance
     minLidarDistance = min(Lidar.ranges[150:210])
     if minLidarDistance < 1.0:
-        velocity = (minLidarDistance - SAFE_DISTANCE) * 1000
+        velocity = max((minLidarDistance - SAFE_DISTANCE) * 1000, 0)
 
     # MISSION1: Wait for 5 sec at second stop line
     if (
