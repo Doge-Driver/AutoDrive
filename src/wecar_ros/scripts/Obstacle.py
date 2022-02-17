@@ -52,13 +52,6 @@ def getEvasionPoint(rotateAngleDeg=40):
         rot_y = minRange * sin(
             angle + radians(filteredRange.index(minRange) + rotateAngleDeg)
         )
-    else:
-        rot_x = minRange * cos(
-            angle + radians(rotateAngleDeg + filteredRange.index(minRange))
-        )
-        rot_y = minRange * sin(
-            angle + radians(rotateAngleDeg + filteredRange.index(minRange))
-        )
     lidar_min_rotate_x = VehicleStatus.position.x + rot_x
     lidar_min_rotate_y = VehicleStatus.position.y + rot_y
 
