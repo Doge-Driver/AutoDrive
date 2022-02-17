@@ -29,7 +29,7 @@ def steering_angle(path, velocity=2.4):
             if rotated_point.x > 0:
                 dis = sqrt(rotated_point.x**2 + rotated_point.y**2)
                 if dis >= lfd:
-                    lfd = velocity / 2.5
+                    lfd = velocity / 2.2
                     if lfd < LFD_MIN:
                         lfd = LFD_MIN
                     elif lfd > LFD_MAX:
@@ -63,7 +63,7 @@ def velocity_plan(road_point, velocity=3.0):  # road_point => shape =[n,2]
             )
         slope_list.append(slope)
     if len(slope_list) == 0:
-        return 0.7
+        return 2.0
     slope_min = min(slope_list)
     slope_max = max(slope_list)
     return velocity - 3.8 * (slope_max - slope_min)

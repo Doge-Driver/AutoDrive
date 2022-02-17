@@ -156,16 +156,6 @@ def findNearestLanePoints(simPoints):
     return lanePoints, minDistances
 
 
-intersectionPoints = [convertPointImg2Sim(2063, 462)]
-
-
-def isIntersection():
-    for point in intersectionPoints:
-        if Vehicle.distanceWith(point) < 2.5:
-            return True
-    return False
-
-
 def findRoadPoints(slicedGlobalPath, potential):
     imgGlobal_path = []
     for point in slicedGlobalPath:
