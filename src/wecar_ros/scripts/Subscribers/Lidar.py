@@ -29,7 +29,7 @@ ranges = []  # type: List[float]
 intensities = []
 
 rotatedRanges = []
-filteredRanges = []
+# filteredRanges = []
 
 
 def convert2Points(angleOffset=0):
@@ -50,36 +50,35 @@ def convert2Points(angleOffset=0):
     return points
 
 
-def abscartpoint():
-    cartesianRelativeLidarPoints = convert2Points(
-        angleOffset=radians(VehicleStatus.heading)
-    )  # type: List[Point32]
-    cartesianAbsoluteLidarPoints = []
+# def abscartpoint():
+#     cartesianRelativeLidarPoints = convert2Points(
+#         angleOffset=radians(VehicleStatus.heading)
+#     )  # type: List[Point32]
+#     cartesianAbsoluteLidarPoints = []
 
-    for point in cartesianRelativeLidarPoints:
-        cartesianAbsoluteLidarPoints.append(
-            (VehicleStatus.position.x + point.x, VehicleStatus.position.y + point.y)
-        )
+#     for point in cartesianRelativeLidarPoints:
+#         cartesianAbsoluteLidarPoints.append(
+#             (VehicleStatus.position.x + point.x, VehicleStatus.position.y + point.y)
+#         )
 
 
 def filterRanges(ranges=ranges):
     global filteredRanges
     angle = ANGLE_YAW + radians(VehicleStatus.heading)
-    filteredRanges = []
+    _filteredRanges = []
 
     for range in ranges:
         if range > RANGE_MAX:
-            filteredRanges.append(RANGE_MAX)
+            _filteredRanges.append(RANGE_MAX)
             continue
         x = range * cos(angle) + VehicleStatus.position.x
         y = range * sin(angle) + VehicleStatus.position.y
         angle += angleIncrement
         if not LaneMap.inSimRange(x, y):
-            filteredRanges.append(RANGE_MAX)
+            _filteredRanges.append(RANGE_MAX)
         else:
-            filteredRanges.append(range)
-
-    return filteredRanges
+            _filteredRanges.append(range)
+    return _filteredRanges
 
 
 def publishPointCloud():
@@ -101,11 +100,10 @@ def __setLidar(res):  # type: (LaserScan) -> None
     scanTime = res.scan_time
     rangeMin = res.range_min
     rangeMax = res.range_max
-    ranges = res.ranges
+    ranges = filterRanges(res.ranges)
     intensities = res.intensities
 
     rotatedRanges = ranges[180:360] + ranges[0:180]
-    filterRanges()
 
 
 rospy.Subscriber("/lidar2D", LaserScan, __setLidar)

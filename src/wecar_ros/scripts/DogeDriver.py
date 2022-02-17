@@ -137,7 +137,7 @@ while not rospy.is_shutdown():
         for point in GlobalPath.getGlobalPath()[GlobalPath.getCurrentPathIndex() :]:
             drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
 
-        # Draw DOT lane Points
+        # Draw Road Points
         for point in roadPoints:
             drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
 
