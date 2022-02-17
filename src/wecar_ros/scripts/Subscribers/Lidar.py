@@ -1,10 +1,13 @@
 from math import cos, pi, radians, sin
 from typing import List
 
+import LaneMap
 import rospy
 from geometry_msgs.msg import Point32
 from sensor_msgs.msg import LaserScan, PointCloud
 from std_msgs.msg import Header
+
+from . import VehicleStatus
 
 __isRetrieved = False
 __pcd_pub = rospy.Publisher("laser2pcd", PointCloud, queue_size=1)
@@ -25,6 +28,7 @@ ranges = []  # type: List[float]
 intensities = []
 
 rotatedRanges = []
+filteredRanges = []
 
 
 def convert2Points(angleOffset=0):
@@ -43,6 +47,26 @@ def convert2Points(angleOffset=0):
         angle += angleIncrement
 
     return points
+
+
+def filterRanges(ranges=ranges):
+    global filteredRanges
+    angle = 180 + radians(VehicleStatus.heading)
+    filteredRanges = []
+
+    for range in ranges:
+        if range > 10.0:
+            filteredRanges.append(1000)
+            continue
+        x = range * cos(angle) + VehicleStatus.position.x
+        y = range * sin(angle) + VehicleStatus.position.y
+        angle += angleIncrement
+        if not LaneMap.inSimRange(x, y):
+            filteredRanges.append(1000)
+        else:
+            filteredRanges.append(range)
+
+    return filteredRanges
 
 
 def publishPointCloud():
@@ -68,6 +92,7 @@ def __setLidar(res):  # type: (LaserScan) -> None
     intensities = res.intensities
 
     rotatedRanges = ranges[180:360] + ranges[0:180]
+    filterRanges()
 
 
 rospy.Subscriber("/lidar2D", LaserScan, __setLidar)

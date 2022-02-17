@@ -1,7 +1,6 @@
 #! /usr/bin/python3
-import operator
 from enum import Enum
-from math import atan2, cos, sin, sqrt
+from math import sqrt
 from typing import Tuple
 
 import cv2
@@ -35,9 +34,21 @@ IMG_CENTER_X, IMG_CENTER_Y = int(IMG_WIDTH / 2), int(IMG_HEIGHT / 2)
 SCALE_FACTOR = IMG_WIDTH / SIM_WIDTH  # IMG_WIDTH / SIM_WIDTH == IMG_HEIGHT / SIM_HEIGHT
 
 
+def inSimRange(x, y):
+    if x == None or y == None:
+        return False
+    return SIM_MIN_X <= x <= SIM_MAX_X and SIM_MIN_Y <= y <= SIM_MAX_Y
+
+
+def inImgRange(x, y):
+    if x == None or y == None:
+        return False
+    return IMG_MIN_X <= x < IMG_MAX_X and IMG_MIN_Y <= y < IMG_MAX_Y
+
+
 def safeMapAccess(x, y):
     x, y = int(x), int(y)
-    if x < 0 or y < 0 or x >= IMG_WIDTH or y >= IMG_HEIGHT:
+    if not inImgRange(x, y):
         return 0
     return MAP[y][x]
 
@@ -53,9 +64,7 @@ def convertSizeImg2Sim(imgSize):
 def convertPointSim2Img(
     x, y
 ):  # type: (float, float) -> Tuple[float, float] | Tuple[None, None]
-    if x > SIM_MAX_X or x < SIM_MIN_X:
-        return None, None
-    if y > SIM_MAX_Y or y < SIM_MIN_Y:
+    if not inSimRange(x, y):
         return None, None
     scaledX, scaledY = x * SCALE_FACTOR, y * SCALE_FACTOR
     return IMG_CENTER_X + scaledX, IMG_CENTER_Y - scaledY
@@ -63,10 +72,8 @@ def convertPointSim2Img(
 
 def convertPointImg2Sim(
     x, y
-):  # type: (int, int) -> Tuple[float, float] | Tuple[None, None]
-    if x > IMG_MAX_X or x < IMG_MIN_X:
-        return None, None
-    if y > IMG_MAX_Y or y < IMG_MIN_Y:
+):  # type: (float, float) -> Tuple[float, float] | Tuple[None, None]
+    if not inImgRange(x, y):
         return None, None
     scaledX, scaledY = x / SCALE_FACTOR, y / SCALE_FACTOR
     return SIM_MIN_X + scaledX, SIM_MAX_Y - scaledY
@@ -81,7 +88,7 @@ def findNearestLanePoint(simX, simY, ksize=0.5):  # SimScaled
         LaneType.DOT.value: 100000,
         LaneType.CENTER.value: 100000,
         LaneType.STOP.value: 100000,
-    }  # type: dict[int, int]
+    }  # type: dict[float, float]
 
     nearestPoint = {
         LaneType.EDGE.value: (None, None),
@@ -131,9 +138,9 @@ def findNearestLanePoints(simPoints):
             minDistances[LaneType.EDGE.value].append(minDistance[LaneType.EDGE.value])
 
         if nearestPoint[LaneType.DOT.value] != (None, None):
-
             lanePoints[LaneType.DOT.value].append(nearestPoint[LaneType.DOT.value])
             minDistances[LaneType.DOT.value].append(minDistance[LaneType.DOT.value])
+
         if nearestPoint[LaneType.CENTER.value] != (None, None):
             lanePoints[LaneType.CENTER.value].append(
                 nearestPoint[LaneType.CENTER.value]
@@ -154,7 +161,7 @@ intersectionPoints = [convertPointImg2Sim(2063, 462)]
 
 def isIntersection():
     for point in intersectionPoints:
-        if Vehicle.distanceWith(point) < 3.0:
+        if Vehicle.distanceWith(point) < 2.5:
             return True
     return False
 

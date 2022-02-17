@@ -1,8 +1,7 @@
 #! /usr/bin/env python3
 
-from math import asin, cos, degrees, radians, sin
+from math import asin, cos, radians, sin
 
-import numpy as np
 import rospy
 from std_msgs.msg import Float64
 
@@ -102,12 +101,15 @@ def getLane(angle, findRange=0.7):
         VehicleStatus.position.x, VehicleStatus.position.y
     )
 
+    if not LaneMap.inImgRange(imgVehicleX, imgVehicleY):
+        return 0, (None, None), None
+
     for r in range(1, imgRange):
         x, y = r * cos(theta), r * sin(theta)  # Polar Coordinates to Cartesian
         x, y = int(x + imgVehicleX), int(y + imgVehicleY)
         if LaneMap.safeMapAccess(x, y) != 0:
-            return LaneMap.safeMapAccess(x, y), LaneMap.convertSizeImg2Sim(r)
-    return 0, None
+            return LaneMap.safeMapAccess(x, y), (x, y), LaneMap.convertSizeImg2Sim(r)
+    return 0, (None, None), None
 
 
 frontLane, frontLaneDistance = 0, 0.0
@@ -117,20 +119,20 @@ rightLane, rightLaneDistance = 0, 0.0
 
 def getFrontLane():
     global frontLane, frontLaneDistance
-    frontLane, frontLaneDistance = getLane(FRONT_LANE_ANGLE, 0.9)
-    return frontLane, frontLaneDistance
+    frontLaneType, frontLanePoint, frontLaneDistance = getLane(FRONT_LANE_ANGLE, 0.9)
+    return frontLaneType, frontLanePoint, frontLaneDistance
 
 
 def getLeftLane():
     global leftLane, leftLaneDistance
-    leftLane, leftLaneDistance = getLane(LEFT_LANE_ANGLE, 0.4)
-    return leftLane, leftLaneDistance
+    leftLane, leftLanePoint, leftLaneDistance = getLane(LEFT_LANE_ANGLE, 0.4)
+    return leftLane, leftLanePoint, leftLaneDistance
 
 
 def getRightLane():
     global rightLane, rightLaneDistance
-    rightLane, rightLaneDistance = getLane(RIGHT_LANE_ANGLE, 0.4)
-    return rightLane, rightLaneDistance
+    rightLane, rightLanePoint, rightLaneDistance = getLane(RIGHT_LANE_ANGLE, 0.4)
+    return rightLane, rightLanePoint, rightLaneDistance
 
 
 def updateNearbyLanes():

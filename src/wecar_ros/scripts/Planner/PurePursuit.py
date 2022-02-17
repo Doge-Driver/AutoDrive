@@ -10,7 +10,7 @@ LFD_MAX = 30
 vehicle_length = 0.3
 
 
-def steering_angle(path, vel=2.4):
+def steering_angle(path, velocity=2.4):
     global lfd
     vehicle_position = VehicleStatus.position
     vehicle_yaw = radians(VehicleStatus.heading)
@@ -29,7 +29,7 @@ def steering_angle(path, vel=2.4):
             if rotated_point.x > 0:
                 dis = sqrt(rotated_point.x**2 + rotated_point.y**2)
                 if dis >= lfd:
-                    lfd = vel / 2.9
+                    lfd = velocity / 2.5
                     if lfd < LFD_MIN:
                         lfd = LFD_MIN
                     elif lfd > LFD_MAX:
@@ -47,7 +47,7 @@ def steering_angle(path, vel=2.4):
         return None
 
 
-def velocity_plan(road_point, velocity=2.4):  # road_point => shape =[n,2]
+def velocity_plan(road_point, velocity=3.0):  # road_point => shape =[n,2]
     slope_list = []
     for i in range(2):
         if len(road_point) <= i + 1:

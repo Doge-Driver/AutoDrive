@@ -12,7 +12,6 @@ import GlobalPath
 import LaneMap
 import Obstacle
 import Vehicle
-from LaneMap import LaneType, findRoadPoint
 from Planner import Cruise
 from Subscribers import Lidar, TrafficLight, VehicleStatus
 from utils import getFilePath
@@ -51,9 +50,10 @@ rospy.init_node("doge_driver", anonymous=True)
 rospy.on_shutdown(Vehicle.stop)
 
 # Load Global Path
-GlobalPath.load("path/object_test.txt")
+GlobalPath.load("path/global_path4.txt")
 
 doneMission1 = False
+mission1Time = 0.0
 
 potentialFile = getFilePath("mapimg/Potential_v3.PNG")
 potential = cv2.imread(potentialFile, cv2.IMREAD_UNCHANGED)
@@ -67,27 +67,34 @@ while not rospy.is_shutdown():
     GlobalPath.updatePathIndex()
 
     # Update Lane Info Nearby Vehicle
-    Vehicle.updateNearbyLanes()
+    (
+        (leftLane, leftLanePoint, leftLaneDistance),
+        (frontLane, frontLanePoint, frontLaneDistance),
+        (rightLane, rightLanePoint, rightLaneDistance),
+    ) = Vehicle.updateNearbyLanes()
 
     # MISSION1: Wait for 5 sec at second stop line
     if (
         not doneMission1
-        and Vehicle.distanceWith(LaneMap.convertPointImg2Sim(3024, 580)) < 0.7
-        # and Vehicle.isOnStopLine() # 차가 돌아가있으면 부정확함..
+        and Vehicle.distanceWith(LaneMap.convertPointImg2Sim(3024, 580)) < 1.0
     ):
-        doneMission1 = True
-        Vehicle.brake()
-        time.sleep(5)
+        if mission1Time == 0.0:
+            mission1Time = time.time()
+        elif time.time() - mission1Time < 5:
+            velocity = 0
+            steering = 0
+        else:
+            doneMission1 = True
 
     # MISSION2: Wait for Rotary vehicles
 
     # MISSION3: Traffic Light
-    elif LaneMap.isIntersection() and Vehicle.isOnStopLine():
-        while not TrafficLight.isLeftGreen():
-            Vehicle.brake()
+    elif LaneMap.isIntersection() and not TrafficLight.isLeftGreen():
+        velocity = 0
+        steering = 0
 
     # MISSION4: Avoid Static Obstacles
-    elif Obstacle.isNearby():
+    elif Obstacle.isForward():
         print("obstacle detected!!")
         evasionPoint = Obstacle.getEvasionPoint()
         print(f"evasion point {evasionPoint}")
@@ -96,7 +103,8 @@ while not rospy.is_shutdown():
 
     # MISSION5: Emergency Brake when Dynamic Obstacles
     elif Obstacle.isDynamicObstacleDetected():
-        Vehicle.brake()
+        velocity = 0
+        steering = 0
 
     else:
         # Cruise
@@ -125,39 +133,12 @@ while not rospy.is_shutdown():
         drawLidarOnMap(mapImg)
 
         # Draw Global Points
-        for point in GlobalPath.getGlobalPath():
+        for point in GlobalPath.getGlobalPath()[GlobalPath.getCurrentPathIndex() :]:
             drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
-
-        lanePoints, distances = LaneMap.findNearestLanePoints(
-            simPoints=slicedGlobalPathPoints
-        )
-
-        for point in lanePoints[LaneType.CENTER.value]:
-            drawPoint(mapImg, point[0], point[1], (0, 0, 255), 5)
-
-        for point in lanePoints[LaneType.DOT.value]:
-            drawPoint(mapImg, point[0], point[1], (0, 0, 255), 5)
-
-        for point in lanePoints[LaneType.EDGE.value]:
-            drawPoint(mapImg, point[0], point[1], (0, 0, 255), 5)
-
-        # for point1, point2 in zip(
-        #     lanePoints[LaneType.EDGE.value], lanePoints[LaneType.DOT.value]
-        # ):
-        #     midX = point1[0] + point2[0]
-        #     midY = point1[0] + point2[0]
-        #     drawPoint(mapImg, midX, midY, (0, 0, 255), 5)
 
         # Draw DOT lane Points
         for point in roadPoints:
             drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
-
-        vx, vy = LaneMap.convertPointSim2Img(
-            VehicleStatus.position.x, VehicleStatus.position.y
-        )
-
-        # plt.imshow(LaneMap.MAP)
-        # plt.show()
 
         # cv2 window
         cv2.imshow("img", mapImg)
