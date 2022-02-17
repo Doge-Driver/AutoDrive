@@ -138,8 +138,8 @@ while not rospy.is_shutdown():
             drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
 
         # Draw Road Points
-        for point in roadPoints:
-            drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
+        # for point in roadPoints:
+        #     drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
 
         # cv2 window
         cv2.imshow("img", mapImg)
