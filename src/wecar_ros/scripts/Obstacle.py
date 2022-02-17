@@ -35,9 +35,8 @@ def calcRotaionAngle():
 
 
 def getEvasionPoint(rotateAngleDeg=40):
-    # if isNearby() == True:
     filteredRange = Lidar.filteredRanges
-    angle = pi + radians(VehicleStatus.heading)
+    angle = Lidar.ANGLE_YAW + radians(VehicleStatus.heading)
     minRange = min(filteredRange)
     x = minRange * cos(angle + radians(filteredRange.index(minRange)))
     y = minRange * sin(angle + radians(filteredRange.index(minRange)))
@@ -45,13 +44,12 @@ def getEvasionPoint(rotateAngleDeg=40):
     lidar_min_y = VehicleStatus.position.y + y
 
     print(lidar_min_x, lidar_min_y)
-    if filteredRange.index(minRange) + rotateAngleDeg < 360:
-        rot_x = minRange * cos(
-            angle + radians(filteredRange.index(minRange) + rotateAngleDeg)
-        )
-        rot_y = minRange * sin(
-            angle + radians(filteredRange.index(minRange) + rotateAngleDeg)
-        )
+    rot_x = minRange * cos(
+        angle + radians(filteredRange.index(minRange) + rotateAngleDeg)
+    )
+    rot_y = minRange * sin(
+        angle + radians(filteredRange.index(minRange) + rotateAngleDeg)
+    )
     lidar_min_rotate_x = VehicleStatus.position.x + rot_x
     lidar_min_rotate_y = VehicleStatus.position.y + rot_y
 

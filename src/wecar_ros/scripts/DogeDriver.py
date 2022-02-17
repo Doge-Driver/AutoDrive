@@ -50,7 +50,8 @@ rospy.init_node("doge_driver", anonymous=True)
 rospy.on_shutdown(Vehicle.stop)
 
 # Load Global Path
-GlobalPath.load("path/global_path4.txt")
+# GlobalPath.load("path/global_path4.txt")
+GlobalPath.load("path/object_test.txt")
 
 doneMission1 = False
 mission1Time = 0.0
