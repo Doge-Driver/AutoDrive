@@ -37,6 +37,8 @@ rotatedRanges = []
 def convert2Points(conditionList=None, angleOffset=0):
     angle = ANGLE_YAW + angleOffset
 
+    if conditionList is None:
+        conditionList = np.array(ranges) < RANGE_MAX
     points = []  # type: List[Point32]
 
     for range, condition in zip(ranges, conditionList):
