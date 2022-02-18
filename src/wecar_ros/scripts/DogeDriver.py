@@ -1,13 +1,9 @@
 #! /usr/bin/python3
 
 import time
-from math import radians
-from typing import List
 
 import cv2
-import numpy as np
 import rospy
-from geometry_msgs.msg import Point32
 
 import GlobalPath
 import LaneMap
@@ -16,38 +12,6 @@ import Vehicle
 from Planner import Cruise
 from Subscribers import Lidar, TrafficLight, VehicleStatus
 from utils import getFilePath
-
-DEBUG = True
-
-if DEBUG:
-    # Load Colored Map for Debugging
-    colorMapFile = getFilePath("mapimg/colorLabeledMap.png")
-    colormap = cv2.imread(colorMapFile, cv2.IMREAD_ANYCOLOR)
-
-    def drawPoint(mapImg, simX, simY, color, thickness=3):
-        if (simX, simY) == (None, None):
-            return
-        x, y = LaneMap.convertPointSim2Img(simX, simY)
-        if (x, y) == (None, None):
-            return
-        x, y = int(x), int(y)
-        cv2.line(mapImg, (x, y), (x, y), color, thickness)
-
-    def drawLidarOnMap(mapImg):
-        lidarPoints = Lidar.convert2Points(
-            angleOffset=radians(VehicleStatus.heading),
-        )  # type: List[Point32]
-
-        for point in lidarPoints:
-            lidarPointX, lidarPointY = (
-                VehicleStatus.position.x + point.x,
-                VehicleStatus.position.y + point.y,
-            )
-
-            drawPoint(mapImg, lidarPointX, lidarPointY, (182, 89, 83), 4)
-
-    ex, ey = 0, 0
-
 
 rospy.init_node("doge_driver", anonymous=True)
 rospy.on_shutdown(Vehicle.stop)
@@ -152,30 +116,3 @@ while not rospy.is_shutdown():
     # DRIVE
     Vehicle.accel(velocity)
     Vehicle.steerRadian(steering)
-
-    if DEBUG:
-        Lidar.publishPointCloud()
-
-        # Clone Map
-        mapImg = colormap.copy()
-
-        # Vehicle
-        vehiclePoint = VehicleStatus.position
-        drawPoint(mapImg, vehiclePoint.x, vehiclePoint.y, (255, 0, 0), 15)
-
-        # Lidar
-        drawLidarOnMap(mapImg)
-
-        # Draw Global Points
-        for point in GlobalPath.getGlobalPath()[GlobalPath.getCurrentPathIndex() :]:
-            drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
-
-        # Draw Road Points
-        for point in roadPoints:
-            drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
-
-        drawPoint(mapImg, ex, ey, (255, 0, 0), 10)
-
-        # cv2 window
-        cv2.imshow("img", mapImg)
-        cv2.waitKey(1)
