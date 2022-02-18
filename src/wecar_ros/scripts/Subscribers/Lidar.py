@@ -25,11 +25,10 @@ scanTime = 0.0
 rangeMin = 0.0
 rangeMax = 0.0
 
-ranges = []  # type: List[float]
+ranges = [RANGE_MAX] * 360  # type: List[float]
 intensities = []
 
 rotatedRanges = []
-# filteredRanges = []
 
 
 def convert2Points(angleOffset=0):
@@ -48,18 +47,6 @@ def convert2Points(angleOffset=0):
         angle += angleIncrement
 
     return points
-
-
-# def abscartpoint():
-#     cartesianRelativeLidarPoints = convert2Points(
-#         angleOffset=radians(VehicleStatus.heading)
-#     )  # type: List[Point32]
-#     cartesianAbsoluteLidarPoints = []
-
-#     for point in cartesianRelativeLidarPoints:
-#         cartesianAbsoluteLidarPoints.append(
-#             (VehicleStatus.position.x + point.x, VehicleStatus.position.y + point.y)
-#         )
 
 
 def filterRanges(ranges=ranges):
