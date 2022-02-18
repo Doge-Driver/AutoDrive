@@ -1,25 +1,13 @@
-#! /usr/bin/python3
-from math import cos, pi, radians, sin
+from math import cos, radians, sin
 
-import cv2
 import numpy as np
-from geometry_msgs.msg import Point32
 from numpy import append
 
-import GlobalPath
-import LaneMap
-import Vehicle
-from LaneMap import LaneType, findRoadPoint
 from Subscribers import Lidar, VehicleStatus
-from utils import getFilePath
 
 
-def isStaticObstacleDetected():
+def isStaticObstacle():
     return isNearby()
-
-
-def isDynamicObstacleDetected():
-    return False
 
 
 def isNearby():

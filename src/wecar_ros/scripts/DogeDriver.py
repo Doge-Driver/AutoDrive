@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 
 import time
-from math import dist, radians
+from math import radians
 from typing import List
 
 import cv2
@@ -16,7 +16,7 @@ from Planner import Cruise
 from Subscribers import Lidar, TrafficLight, VehicleStatus
 from utils import getFilePath
 
-DEBUG = True
+DEBUG = False
 
 if DEBUG:
     # Load Colored Map for Debugging
@@ -53,11 +53,14 @@ rospy.on_shutdown(Vehicle.stop)
 GlobalPath.load("path/global_path4.txt")
 # GlobalPath.load("path/object_test.txt")
 
+# Constants
+SAFE_DISTANCE = 0.2
+
+# Mission Flags
 doneMission1 = False
 mission1Time = 0.0
 
-SAFE_DISTANCE = 0.2
-
+# Load potential map
 potentialFile = getFilePath("mapimg/Potential_v3.PNG")
 potential = cv2.imread(potentialFile, cv2.IMREAD_UNCHANGED)
 
@@ -69,13 +72,6 @@ while not rospy.is_shutdown():
         break
     GlobalPath.updatePathIndex()
 
-    # Update Lane Info Nearby Vehicle
-    (
-        (leftLane, leftLanePoint, leftLaneDistance),
-        (frontLane, frontLanePoint, frontLaneDistance),
-        (rightLane, rightLanePoint, rightLaneDistance),
-    ) = Vehicle.updateNearbyLanes()
-
     # Cruise
     slicedGlobalPathPoints = GlobalPath.getSlicedGlobalPath(10)
     # Find Destinated Road Points
@@ -86,7 +82,7 @@ while not rospy.is_shutdown():
 
     # Minimum Safe Distance
     minLidarDistance = min(Lidar.ranges[150:210])
-    if minLidarDistance < 1.0:
+    if minLidarDistance < 1.2:
         velocity = max((minLidarDistance - SAFE_DISTANCE) * 1000, 0)
 
     # MISSION1: Wait for 5 sec at second stop line
@@ -128,21 +124,21 @@ while not rospy.is_shutdown():
     # TRACK
     elif VehicleStatus.position.x < -0.3:
         # MISSION4: Avoid Static Obstacles
-        if Obstacle.isForward():
-            print("obstacle detected!!")
-            evasionPoint = Obstacle.getEvasionPoint()
-            print(f"evasion point {evasionPoint}")
-            velocity = Cruise.velocity([evasionPoint])
-            steering = Cruise.steering([evasionPoint])
+        if Obstacle.isStaticObstacle():
+            if Obstacle.isForward():
+                print("obstacle detected!!")
+                evasionPoint = Obstacle.getEvasionPoint()
+                print(f"evasion point {evasionPoint}")
+                velocity = Cruise.velocity([evasionPoint])
+                steering = Cruise.steering([evasionPoint])
 
-        elif Obstacle.isNearby():
-            velocity = 1000
-            steering = 0
+            elif Obstacle.isNearby():
+                velocity = 1000
+                steering = 0
 
         # MISSION5: Emergency Brake when Dynamic Obstacles
-        elif Obstacle.isDynamicObstacleDetected():
-            velocity = 0
-            steering = 0
+        # this will be done automatically if its not static obstacle
+        # because of minimum safe distance
 
     # DRIVE
     Vehicle.accel(velocity)

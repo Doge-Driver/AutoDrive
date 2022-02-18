@@ -1,7 +1,7 @@
-from math import atan2, cos, pi, radians, sin, sqrt, tan
+from math import atan2, cos, radians, sin, sqrt
 
 import numpy as np
-from geometry_msgs.msg import Point, PoseStamped
+from geometry_msgs.msg import Point
 from Subscribers import VehicleStatus
 
 lfd = 1

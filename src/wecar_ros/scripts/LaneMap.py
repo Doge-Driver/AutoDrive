@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 from enum import Enum
 from math import sqrt
 from typing import Tuple
@@ -6,7 +5,6 @@ from typing import Tuple
 import cv2
 import numpy as np
 
-import Vehicle
 from utils import getFilePath
 
 
