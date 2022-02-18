@@ -5,6 +5,7 @@ from math import radians
 from typing import List
 
 import cv2
+import numpy as np
 import rospy
 from geometry_msgs.msg import Point32
 
@@ -16,7 +17,7 @@ from Planner import Cruise
 from Subscribers import Lidar, TrafficLight, VehicleStatus
 from utils import getFilePath
 
-DEBUG = False
+DEBUG = True
 
 if DEBUG:
     # Load Colored Map for Debugging
@@ -34,7 +35,7 @@ if DEBUG:
 
     def drawLidarOnMap(mapImg):
         lidarPoints = Lidar.convert2Points(
-            angleOffset=radians(VehicleStatus.heading)
+            angleOffset=radians(VehicleStatus.heading),
         )  # type: List[Point32]
 
         for point in lidarPoints:
@@ -43,7 +44,9 @@ if DEBUG:
                 VehicleStatus.position.y + point.y,
             )
 
-            drawPoint(mapImg, lidarPointX, lidarPointY, (182, 89, 83), 3)
+            drawPoint(mapImg, lidarPointX, lidarPointY, (182, 89, 83), 4)
+
+    ex, ey = 0, 0
 
 
 rospy.init_node("doge_driver", anonymous=True)
@@ -51,14 +54,15 @@ rospy.on_shutdown(Vehicle.stop)
 
 # Load Global Path
 GlobalPath.load("path/global_path4.txt")
-# GlobalPath.load("path/object_test.txt")
+# GlobalPath.load("path/object_test_slicedfromg4.txt")
 
 # Constants
-SAFE_DISTANCE = 0.2
+SAFE_DISTANCE = 0.6
 
 # Mission Flags
 doneMission1 = False
 mission1Time = 0.0
+
 
 # Load potential map
 potentialFile = getFilePath("mapimg/Potential_v3.PNG")
@@ -121,21 +125,15 @@ while not rospy.is_shutdown():
         velocity = 0
         steering = 0
 
-    # TRACK
+    # MISSION 4 & 5: TRACK
     elif VehicleStatus.position.x < -0.3:
-        # MISSION4: Avoid Static Obstacles
-        if Obstacle.isStaticObstacle():
-            if Obstacle.isForward():
-                print("obstacle detected!!")
-                evasionPoint = Obstacle.getEvasionPoint()
-                print(f"evasion point {evasionPoint}")
-                velocity = Cruise.velocity([evasionPoint])
-                steering = Cruise.steering([evasionPoint])
+        if minLidarDistance < 2.0:
+            velocity = (minLidarDistance - SAFE_DISTANCE) * 1000
 
-            elif Obstacle.isNearby():
-                velocity = 1000
-                steering = 0
-
+        # Mission 4: Static Obstacles
+        if VehicleStatus.position.y > 0:
+            # code here
+            pass
         # MISSION5: Emergency Brake when Dynamic Obstacles
         # this will be done automatically if its not static obstacle
         # because of minimum safe distance
@@ -157,16 +155,15 @@ while not rospy.is_shutdown():
         # Lidar
         drawLidarOnMap(mapImg)
 
-        # Draw Global Points
-        for point in GlobalPath.getGlobalPath()[GlobalPath.getCurrentPathIndex() :]:
-            drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
+        # # Draw Global Points
+        # for point in GlobalPath.getGlobalPath()[GlobalPath.getCurrentPathIndex() :]:
+        #     drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
 
         # Draw Road Points
         # for point in roadPoints:
         #     drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
 
-        # plt.imshow(mapImg)
-        # plt.show()
+        drawPoint(mapImg, ex, ey, (255, 0, 0), 10)
 
         # cv2 window
         cv2.imshow("img", mapImg)
