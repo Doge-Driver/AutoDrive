@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 from math import asin, cos, radians, sin
 
 import rospy
@@ -145,10 +143,3 @@ def isOnStopLine():
 
 def distanceWith(point):
     return calcDistance(VehicleStatus.position, point)
-
-
-if __name__ == "__main__":
-    rospy.init_node("vehicle_test", anonymous=True)
-    while not rospy.is_shutdown():
-        Vehicle.steerRadius(-1.8961)
-        Vehicle.accel()
