@@ -1,11 +1,14 @@
 from math import cos, pi, radians, sin
 from typing import List
 
+import cv2
 import LaneMap
+import numpy as np
 import rospy
 from geometry_msgs.msg import Point32
 from sensor_msgs.msg import LaserScan, PointCloud
 from std_msgs.msg import Header
+from utils import getFilePath
 
 from . import VehicleStatus
 
@@ -31,13 +34,13 @@ intensities = []
 rotatedRanges = []
 
 
-def convert2Points(angleOffset=0):
+def convert2Points(conditionList=None, angleOffset=0):
     angle = ANGLE_YAW + angleOffset
 
     points = []  # type: List[Point32]
 
-    for range in ranges:
-        if range < RANGE_MAX:
+    for range, condition in zip(ranges, conditionList):
+        if condition:
             points.append(
                 Point32(
                     x=range * cos(angle),  # + vehicleStatus.position.x,
