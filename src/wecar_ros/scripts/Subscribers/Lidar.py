@@ -1,14 +1,12 @@
 from math import cos, pi, radians, sin
 from typing import List
 
-import cv2
 import LaneMap
 import numpy as np
 import rospy
 from geometry_msgs.msg import Point32
 from sensor_msgs.msg import LaserScan, PointCloud
 from std_msgs.msg import Header
-from utils import getFilePath
 
 from . import VehicleStatus
 

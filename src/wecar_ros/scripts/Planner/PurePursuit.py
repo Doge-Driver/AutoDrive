@@ -19,24 +19,24 @@ def steering_angle(path, velocity=2.4):
     is_look_forward_point = False
 
     for i in path:
-        dx = i[0] - (vehicle_position.x + 0.065 * cos(vehicle_yaw))
-        dy = i[1] - (vehicle_position.y + 0.065 * sin(vehicle_yaw))
+        dx = i[0] - (vehicle_position.x + 0.067 * cos(vehicle_yaw))
+        dy = i[1] - (vehicle_position.y + 0.067 * sin(vehicle_yaw))
         rr = sqrt(dx**2 + dy**2)
         if rr < 10:
             rotated_point.x = cos(vehicle_yaw) * dx + sin(vehicle_yaw) * dy
             rotated_point.y = sin(vehicle_yaw) * dx - cos(vehicle_yaw) * dy
 
-            if rotated_point.x > 0:
-                dis = sqrt(rotated_point.x**2 + rotated_point.y**2)
-                if dis >= lfd:
-                    lfd = velocity / 2.2
-                    if lfd < LFD_MIN:
-                        lfd = LFD_MIN
-                    elif lfd > LFD_MAX:
-                        lfd = LFD_MAX
-                    is_look_forward_point = True
+            # if rotated_point.x > 0:
+            dis = sqrt(rotated_point.x**2 + rotated_point.y**2)
+            if dis >= lfd:
+                lfd = velocity / 2.8
+                if lfd < LFD_MIN:
+                    lfd = LFD_MIN
+                elif lfd > LFD_MAX:
+                    lfd = LFD_MAX
+                is_look_forward_point = True
 
-                    break
+                break
 
     theta = atan2(rotated_point.y, rotated_point.x)
 

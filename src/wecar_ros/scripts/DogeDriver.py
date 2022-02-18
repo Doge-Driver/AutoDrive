@@ -54,7 +54,6 @@ rospy.on_shutdown(Vehicle.stop)
 
 # Load Global Path
 GlobalPath.load("path/global_path4.txt")
-# GlobalPath.load("path/object_test_slicedfromg4.txt")
 
 # Constants
 SAFE_DISTANCE = 0.6
@@ -62,6 +61,9 @@ SAFE_DISTANCE = 0.6
 # Mission Flags
 doneMission1 = False
 mission1Time = 0.0
+
+isEvading = False
+evasionPoint = (0, 0)
 
 
 # Load potential map
@@ -127,13 +129,22 @@ while not rospy.is_shutdown():
 
     # MISSION 4 & 5: TRACK
     elif VehicleStatus.position.x < -0.3:
-        if minLidarDistance < 2.0:
-            velocity = (minLidarDistance - SAFE_DISTANCE) * 1000
+        MIN_VELOCITY = 1000
 
         # Mission 4: Static Obstacles
         if VehicleStatus.position.y > 0:
-            # code here
-            pass
+            if minLidarDistance < 2.0:
+                velocity = max((minLidarDistance - SAFE_DISTANCE) * 1000, MIN_VELOCITY)
+            if Obstacle.isForward():
+                isEvading = True
+                evasionPoint = Obstacle.getFirstEvasionPoint()
+
+            if isEvading:
+                velocity = MIN_VELOCITY
+                steering = Cruise.steering([evasionPoint])
+                if Vehicle.distanceWith(evasionPoint) < 0.5:
+                    isEvading = False
+
         # MISSION5: Emergency Brake when Dynamic Obstacles
         # this will be done automatically if its not static obstacle
         # because of minimum safe distance
@@ -155,13 +166,13 @@ while not rospy.is_shutdown():
         # Lidar
         drawLidarOnMap(mapImg)
 
-        # # Draw Global Points
-        # for point in GlobalPath.getGlobalPath()[GlobalPath.getCurrentPathIndex() :]:
-        #     drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
+        # Draw Global Points
+        for point in GlobalPath.getGlobalPath()[GlobalPath.getCurrentPathIndex() :]:
+            drawPoint(mapImg, point.x, point.y, (255, 255, 0), 5)
 
         # Draw Road Points
-        # for point in roadPoints:
-        #     drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
+        for point in roadPoints:
+            drawPoint(mapImg, point[0], point[1], (255, 0, 255), 5)
 
         drawPoint(mapImg, ex, ey, (255, 0, 0), 10)
 
