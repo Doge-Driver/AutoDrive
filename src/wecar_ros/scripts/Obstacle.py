@@ -1,7 +1,6 @@
 from math import cos, radians, sin
 
 import numpy as np
-from numpy import append
 
 from Subscribers import Lidar, VehicleStatus
 
